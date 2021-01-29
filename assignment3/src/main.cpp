@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <Arduino_FreeRTOS.h>
+#include <swRTC.h>
 
 // define two tasks for Blink & AnalogRead
 void TaskBlink(void *pvParameters);
@@ -7,10 +8,15 @@ void TaskAnalogRead(void *pvParameters);
 void setup();
 void loop();
 
+swRTC rtc;
+
 // the setup function runs once when you press reset or power the board
 void setup()
 {
-
+  rtc.startRTC();
+  rtc.setTime(15,30,50);
+  rtc.setDate(29,1,2021);
+  rtc.startRTC();
   // Now set up two tasks to run independently.
   xTaskCreate(
       TaskBlink, "Blink" // A name just for humans
@@ -22,7 +28,7 @@ void setup()
       NULL);
 
   xTaskCreate(
-      TaskAnalogRead, "AnalogRead", 128 // This stack size can be checked & adjusted by reading Highwater
+      TaskAnalogRead, "AnalogRead", 256 // This stack size can be checked & adjusted by reading Highwater
       ,
       NULL, 1 // priority
       ,
@@ -60,15 +66,22 @@ void TaskAnalogRead(void *pvParameters) // This is a task.
 {
   (void)pvParameters;
 
-  // initialize serial communication at 9600 bits per second:
-  Serial.begin(9600);
+  // initialize serial communication at 11520 bits per second:
+  Serial.begin(11520);
 
   for (;;)
   {
+    // Create a string to hold our info
+    char mystr[60];
+    // Add time to mystr
+    sprintf(mystr, "My time: %d:%d:%d My date: %d/%d/%d", rtc.getHours(), rtc.getMinutes(), rtc.getSeconds(), rtc.getMonth(), rtc.getDay(), rtc.getYear());
     // read the input on analog pin 0:
     int sensorValue = analogRead(A0);
-    // print out the value you read:
-    Serial.println(sensorValue);
-    vTaskDelay(1); // one tick delay (15ms) in between reads for stability
+    // Add value to mystr
+    sprintf(mystr + strlen(mystr), " My sensor value: %d", sensorValue);
+    // Print out mystr
+    Serial.println(mystr);
+    // Task Delay for ~1 second = 1000ms
+    vTaskDelay(pdMS_TO_TICKS(1000));
   }
 }
