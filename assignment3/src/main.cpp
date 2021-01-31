@@ -13,9 +13,9 @@ swRTC rtc;
 // the setup function runs once when you press reset or power the board
 void setup()
 {
-  rtc.startRTC();
-  rtc.setTime(15,30,50);
-  rtc.setDate(29,1,2021);
+  rtc.stopRTC();
+  rtc.setTime(2,16,50);
+  rtc.setDate(31,1,2021);
   rtc.startRTC();
   // Now set up two tasks to run independently.
   xTaskCreate(
@@ -67,7 +67,7 @@ void TaskAnalogRead(void *pvParameters) // This is a task.
   (void)pvParameters;
 
   // initialize serial communication at 11520 bits per second:
-  Serial.begin(11520);
+  Serial.begin(115200);
 
   for (;;)
   {
