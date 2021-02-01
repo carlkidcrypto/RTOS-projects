@@ -13,9 +13,76 @@ swRTC rtc;
 // the setup function runs once when you press reset or power the board
 void setup()
 {
+  Serial.begin(115200);
+
+  byte hour = 0;
+  byte min = 0;
+  byte sec = 0;
+  byte month = 0;
+  byte day = 0;
+  int year = 0;
+
+  //Sun Jan 31 15:17:02 2021
+  char compile_timestamp[] = __TIMESTAMP__;
+  Serial.println(compile_timestamp);
+  char *ptr = strtok(compile_timestamp, " ");
+  char *temparray[5];
+  int i=0;
+  const char *months_arr[12] = {"Jan\0", "Feb\0", "Mar\0", "Apr\0", "May\0", "Jun\0", "Jul\0", "Aug\0", "Sep\0", "Oct\0", "Nov\0", "Dec\0"};
+  while(ptr != NULL)
+  {
+    temparray[i++] = ptr;
+    ptr = strtok(NULL, " ");
+  }
+
+  //for (i=0;i<4;i++)
+  //  Serial.println(temparray[i]);
+
+  for(unsigned int i=0;i<sizeof(*months_arr);i++)
+  {
+    // Find the month
+    if(strcmp(temparray[1],months_arr[i]) == 0)
+      month = i+1;
+  }
+
+  // Calc the day. Will be always be 0 - 31.
+  int day_tens_place = ((int)temparray[2][0] - 48) * 10;
+  int day_ones_place = ((int)temparray[2][1] - 48) * 1;
+  day = day_tens_place + day_ones_place;
+
+  // Calc the year. Will always be xxxx. First we convert to int and then subtract ASCII offset
+  int year_thousands_place = ((int)temparray[4][0] - 48) * 1000;
+  int year_hundreds_place = ((int)temparray[4][1] - 48) * 100;
+  int year_tens_place = ((int)temparray[4][2] - 48) * 10;
+  int year_ones_place = ((int)temparray[4][3] - 48) * 1;
+  year = year_thousands_place + year_hundreds_place + year_tens_place + year_ones_place;
+
+  // Now we need to parse and convert the time field. hr:min:secs, xx:xx:xx
+  char *ptr2 = strtok(temparray[3], ":");
+  char *temparray2[4];
+  int k=0;
+  while(ptr2 != NULL)
+  {
+    temparray2[k++] = ptr2;
+    ptr2 = strtok(NULL, ":");
+  }
+
+  int hour_tens_place = ((int)temparray2[0][0] - 48) * 10;
+  int hour_ones_place = ((int)temparray2[0][1] - 48) * 1;
+
+  int minute_tens_place = ((int)temparray2[1][0] - 48) * 10;
+  int minute_ones_place = ((int)temparray2[1][1] - 48) * 1;
+
+  int second_tens_place = ((int)temparray2[2][0] - 48) * 10;
+  int second_ones_place = ((int)temparray2[2][1] - 48) * 1;
+
+  hour = hour_tens_place + hour_ones_place;
+  min = minute_tens_place + minute_ones_place;
+  sec = second_tens_place + second_ones_place;
+
   rtc.stopRTC();
-  rtc.setTime(2,16,50);
-  rtc.setDate(31,1,2021);
+  rtc.setTime(hour,min,sec);
+  rtc.setDate(day,month,year);
   rtc.startRTC();
   // Now set up two tasks to run independently.
   xTaskCreate(
