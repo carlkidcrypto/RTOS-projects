@@ -46,8 +46,8 @@ void setup()
   }
 
   // Calc the day. Will be always be 0 - 31.
-  int day_tens_place = ((int)temparray[2][0] - 48) * 10;
-  int day_ones_place = ((int)temparray[2][1] - 48) * 1;
+  byte day_tens_place = ((byte)temparray[2][0] - 48) * 10;
+  byte day_ones_place = ((byte)temparray[2][1] - 48) * 1;
   day = day_tens_place + day_ones_place;
 
   // Calc the year. Will always be xxxx. First we convert to int and then subtract ASCII offset
@@ -67,14 +67,14 @@ void setup()
     ptr2 = strtok(NULL, ":");
   }
 
-  int hour_tens_place = ((int)temparray2[0][0] - 48) * 10;
-  int hour_ones_place = ((int)temparray2[0][1] - 48) * 1;
+  byte hour_tens_place = ((byte)temparray2[0][0] - 48) * 10;
+  byte hour_ones_place = ((byte)temparray2[0][1] - 48) * 1;
 
-  int minute_tens_place = ((int)temparray2[1][0] - 48) * 10;
-  int minute_ones_place = ((int)temparray2[1][1] - 48) * 1;
+  byte minute_tens_place = ((byte)temparray2[1][0] - 48) * 10;
+  byte minute_ones_place = ((byte)temparray2[1][1] - 48) * 1;
 
-  int second_tens_place = ((int)temparray2[2][0] - 48) * 10;
-  int second_ones_place = ((int)temparray2[2][1] - 48) * 1;
+  byte second_tens_place = ((byte)temparray2[2][0] - 48) * 10;
+  byte second_ones_place = ((byte)temparray2[2][1] - 48) * 1;
 
   hour = hour_tens_place + hour_ones_place;
   min = minute_tens_place + minute_ones_place;
