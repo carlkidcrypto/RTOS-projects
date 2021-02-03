@@ -74,7 +74,7 @@ void setup()
       ,
       128 // Stack size
       ,
-      (void *)&DP_SEMAPHORE // parameters
+      (void *)DP_SEMAPHORE // parameters
       ,
       1 // priority
       ,
@@ -91,7 +91,7 @@ void setup()
       ,
       128 // Stack size
       ,
-      (void *)&DP_SEMAPHORE // parameters
+      (void *)DP_SEMAPHORE // parameters
       ,
       1 // priority
       ,
@@ -139,14 +139,28 @@ void CNT_TASK(void *pvParameters) // This is a task.
   // First thing we do is take the semaphore
   xSemaphoreTake(led_semaphore, 0);
 
+  // Our Counter Variable
+  byte Count = 0;
+  // Are we counting
+  bool Forward = true;
+
   for (;;)
   {
-      // we got it, let us do some stuff
+      if(Forward)
+        Count++;
+      else
+        Count--;
 
-      vTaskDelay(pdMS_TO_TICKS(500));
-      // we are done, give back the semaphore
+      if(Forward == true && Count >= 42)
+        Forward = false;
+      else if (Forward == false && Count == 0)
+        Forward = true;
+
+      Serial.println(Count);
+      // we are done, give semaphore, and delay
       Serial.println(F("CNT_TASK: semaphore given!"));
       xSemaphoreGive(led_semaphore);
+      vTaskDelay(pdMS_TO_TICKS(500));
   }
 }
 
