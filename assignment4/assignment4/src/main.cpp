@@ -81,7 +81,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      2 // priority
+      tskIDLE_PRIORITY + 2 // priority
       ,
       NULL);
 
@@ -98,7 +98,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      1 // priority
+      tskIDLE_PRIORITY // priority
       ,
       NULL);
 
@@ -115,7 +115,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      1 // priority
+      tskIDLE_PRIORITY + 1 // priority
       ,
       NULL);
 
@@ -132,7 +132,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      1 // priority
+      tskIDLE_PRIORITY + 1 // priority
       ,
       NULL);
 
@@ -223,7 +223,7 @@ void DR_TASK(void *pvParameters) // This is a task.
 
   struct display left;
   struct display right;
-      
+
   for (;;)
   {
     if (CNTQ != NULL)
@@ -1087,13 +1087,27 @@ void DR_TASK(void *pvParameters) // This is a task.
 
           // Load right display
           right.A = true;
-          right.B = false;
-          right.C = true;
+          right.B = true;
+          right.C = false;
           right.D = true;
           right.E = true;
-          right.F = true;
+          right.F = false;
           right.G = true;
         }
+
+        // Once we get here left and right should be loaded
+        if (LQ != NULL && RQ != NULL)
+        {
+          // load both queues up
+          xQueueSend(LQ, &left, (TickType_t)10);
+          xQueueSend(RQ, &right, (TickType_t)10);
+
+          // Now we give DP_SEMAPHORE
+          Serial.println(F("DR_TASK: semaphore given!"));
+          xSemaphoreGive(DP_SEMAPHORE);
+        }
+        else
+          taskYIELD();
       }
       else
         taskYIELD();
@@ -1105,8 +1119,105 @@ void DR_TASK(void *pvParameters) // This is a task.
 
 void DP_TASK(void *pvParameters) // This is a task.
 {
+  // Init segments A - G pins as outputs
+  pinMode(4, OUTPUT);
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
+  pinMode(8, OUTPUT);
+  pinMode(9, OUTPUT);
+  pinMode(10, OUTPUT);
+
+  // Init left and right display as outputs
+  pinMode(44, OUTPUT);
+  pinMode(46, OUTPUT);
+
+  // Start with all Zeros 00
+  digitalWrite(44, LOW);
+  digitalWrite(46, LOW);
+  digitalWrite(4, HIGH);
+  digitalWrite(5, HIGH);
+  digitalWrite(6, HIGH);
+  digitalWrite(7, HIGH);
+  digitalWrite(8, HIGH);
+  digitalWrite(9, HIGH);
+
+  // Define the struct
+  struct display
+  {
+    bool A;
+    bool B;
+    bool C;
+    bool D;
+    bool E;
+    bool F;
+    bool G;
+  };
+
+  struct display left;
+  struct display right;
+
   for (;;)
   {
+    // Let's check if the semaphore is available
+    if (xSemaphoreTake(DP_SEMAPHORE, 0) == pdTRUE)
+    {
+      Serial.println(F("DP_TASK: semaphore taken!"));
+      if (LQ != NULL && RQ != NULL)
+      {
+        // Check and grab data from both left and right queues
+        if ((xQueueReceive(LQ, &left, (TickType_t)10) == pdPASS) && (xQueueReceive(RQ, &right, (TickType_t)10) == pdPASS))
+        {
+          Serial.print(F("DP_TASK: Received from  LQ - "));
+          Serial.print(left.A);
+          Serial.print(left.B);
+          Serial.print(left.C);
+          Serial.print(left.D);
+          Serial.print(left.E);
+          Serial.print(left.F);
+          Serial.println(left.G);
+
+          Serial.print(F("DP_TASK: Received from  RQ - "));
+          Serial.print(right.A);
+          Serial.print(right.B);
+          Serial.print(right.C);
+          Serial.print(right.D);
+          Serial.print(right.E);
+          Serial.print(right.F);
+          Serial.println(right.G);
+
+          vTaskDelay(pdMS_TO_TICKS(50));
+
+          // Set left display
+          digitalWrite(44, LOW);
+          digitalWrite(46, HIGH);
+          digitalWrite(4, left.A);
+          digitalWrite(5, left.B);
+          digitalWrite(6, left.C);
+          digitalWrite(7, left.D);
+          digitalWrite(8, left.E);
+          digitalWrite(9, left.F);
+          digitalWrite(10, left.G);
+
+          vTaskDelay(pdMS_TO_TICKS(50));
+
+          // Set right display
+          digitalWrite(44, HIGH);
+          digitalWrite(46, LOW);
+          digitalWrite(4, right.A);
+          digitalWrite(5, right.B);
+          digitalWrite(6, right.C);
+          digitalWrite(7, right.D);
+          digitalWrite(8, right.E);
+          digitalWrite(9, right.F);
+          digitalWrite(10, right.G);
+
+        }
+      }
+    }
+    else
+      // Semaphore isn't available lets yield for other tasks
+      taskYIELD();
   }
 }
 
