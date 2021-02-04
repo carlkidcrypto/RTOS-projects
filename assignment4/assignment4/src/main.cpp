@@ -587,12 +587,12 @@ void DR_TASK(void *pvParameters) // This is a task.
 
           // Load right display
           right.A = true;
-          right.B = false;
+          right.B = true;
           right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
         }
         else if (number_to_display == 18)
         {
@@ -607,7 +607,7 @@ void DR_TASK(void *pvParameters) // This is a task.
 
           // Load right display
           right.A = true;
-          right.B = false;
+          right.B = true;
           right.C = true;
           right.D = true;
           right.E = true;
@@ -627,143 +627,143 @@ void DR_TASK(void *pvParameters) // This is a task.
 
           // Load right display
           right.A = true;
-          right.B = false;
+          right.B = true;
           right.C = true;
-          right.D = true;
-          right.E = true;
+          right.D = false;
+          right.E = false;
           right.F = true;
           right.G = true;
         }
         else if (number_to_display == 20)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
+          left.C = false;
+          left.D = true;
+          left.E = true;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
           right.A = true;
-          right.B = false;
+          right.B = true;
           right.C = true;
           right.D = true;
           right.E = true;
           right.F = true;
-          right.G = true;
+          right.G = false;
         }
         else if (number_to_display == 21)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
+          left.C = false;
+          left.D = true;
+          left.E = true;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
-          right.A = true;
-          right.B = false;
+          right.A = false;
+          right.B = true;
           right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
         }
         else if (number_to_display == 22)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
+          left.C = false;
+          left.D = true;
+          left.E = true;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
           right.A = true;
-          right.B = false;
-          right.C = true;
+          right.B = true;
+          right.C = false;
           right.D = true;
           right.E = true;
-          right.F = true;
+          right.F = false;
           right.G = true;
         }
         else if (number_to_display == 23)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
+          left.C = false;
+          left.D = true;
+          left.E = true;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
           right.A = true;
-          right.B = false;
+          right.B = true;
           right.C = true;
           right.D = true;
-          right.E = true;
-          right.F = true;
+          right.E = false;
+          right.F = false;
           right.G = true;
         }
         else if (number_to_display == 24)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
+          left.C = false;
+          left.D = true;
+          left.E = true;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
-          right.A = true;
-          right.B = false;
+          right.A = false;
+          right.B = true;
           right.C = true;
-          right.D = true;
-          right.E = true;
+          right.D = false;
+          right.E = false;
           right.F = true;
           right.G = true;
         }
         else if (number_to_display == 25)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
+          left.C = false;
+          left.D = true;
+          left.E = true;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
           right.A = true;
           right.B = false;
           right.C = true;
           right.D = true;
-          right.E = true;
+          right.E = false;
           right.F = true;
           right.G = true;
         }
         else if (number_to_display == 26)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
+          left.C = false;
+          left.D = true;
+          left.E = true;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
           right.A = true;
@@ -777,37 +777,37 @@ void DR_TASK(void *pvParameters) // This is a task.
         else if (number_to_display == 27)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
+          left.C = false;
+          left.D = true;
+          left.E = true;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
           right.A = true;
-          right.B = false;
+          right.B = true;
           right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
         }
         else if (number_to_display == 28)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
+          left.C = false;
+          left.D = true;
+          left.E = true;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
           right.A = true;
-          right.B = false;
+          right.B = true;
           right.C = true;
           right.D = true;
           right.E = true;
@@ -817,153 +817,153 @@ void DR_TASK(void *pvParameters) // This is a task.
         else if (number_to_display == 29)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
+          left.C = false;
+          left.D = true;
+          left.E = true;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
           right.A = true;
-          right.B = false;
+          right.B = true;
           right.C = true;
-          right.D = true;
-          right.E = true;
+          right.D = false;
+          right.E = false;
           right.F = true;
           right.G = true;
         }
         else if (number_to_display == 30)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
           left.C = true;
-          left.D = false;
+          left.D = true;
           left.E = false;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
           right.A = true;
-          right.B = false;
+          right.B = true;
           right.C = true;
           right.D = true;
           right.E = true;
           right.F = true;
-          right.G = true;
+          right.G = false;
         }
         else if (number_to_display == 31)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
           left.C = true;
-          left.D = false;
+          left.D = true;
           left.E = false;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
-          right.A = true;
-          right.B = false;
+          right.A = false;
+          right.B = true;
           right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
         }
         else if (number_to_display == 32)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
           left.C = true;
-          left.D = false;
+          left.D = true;
           left.E = false;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
           right.A = true;
-          right.B = false;
-          right.C = true;
+          right.B = true;
+          right.C = false;
           right.D = true;
           right.E = true;
-          right.F = true;
+          right.F = false;
           right.G = true;
         }
         else if (number_to_display == 33)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
           left.C = true;
-          left.D = false;
+          left.D = true;
           left.E = false;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
           right.A = true;
-          right.B = false;
+          right.B = true;
           right.C = true;
           right.D = true;
-          right.E = true;
-          right.F = true;
+          right.E = false;
+          right.F = false;
           right.G = true;
         }
         else if (number_to_display == 34)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
           left.C = true;
-          left.D = false;
+          left.D = true;
           left.E = false;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
-          right.A = true;
-          right.B = false;
+          right.A = false;
+          right.B = true;
           right.C = true;
-          right.D = true;
-          right.E = true;
+          right.D = false;
+          right.E = false;
           right.F = true;
           right.G = true;
         }
         else if (number_to_display == 35)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
           left.C = true;
-          left.D = false;
+          left.D = true;
           left.E = false;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
           right.A = true;
           right.B = false;
           right.C = true;
           right.D = true;
-          right.E = true;
+          right.E = false;
           right.F = true;
           right.G = true;
         }
         else if (number_to_display == 36)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
           left.C = true;
-          left.D = false;
+          left.D = true;
           left.E = false;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
           right.A = true;
@@ -977,37 +977,37 @@ void DR_TASK(void *pvParameters) // This is a task.
         else if (number_to_display == 37)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
           left.C = true;
-          left.D = false;
+          left.D = true;
           left.E = false;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
           right.A = true;
-          right.B = false;
+          right.B = true;
           right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
         }
         else if (number_to_display == 38)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
           left.C = true;
-          left.D = false;
+          left.D = true;
           left.E = false;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
           right.A = true;
-          right.B = false;
+          right.B = true;
           right.C = true;
           right.D = true;
           right.E = true;
@@ -1017,20 +1017,20 @@ void DR_TASK(void *pvParameters) // This is a task.
         else if (number_to_display == 39)
         {
           // Load left display
-          left.A = false;
+          left.A = true;
           left.B = true;
           left.C = true;
-          left.D = false;
+          left.D = true;
           left.E = false;
           left.F = false;
-          left.G = false;
+          left.G = true;
 
           // Load right display
           right.A = true;
-          right.B = false;
+          right.B = true;
           right.C = true;
-          right.D = true;
-          right.E = true;
+          right.D = false;
+          right.E = false;
           right.F = true;
           right.G = true;
         }
@@ -1042,17 +1042,17 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.C = true;
           left.D = false;
           left.E = false;
-          left.F = false;
-          left.G = false;
+          left.F = true;
+          left.G = true;
 
           // Load right display
           right.A = true;
-          right.B = false;
+          right.B = true;
           right.C = true;
           right.D = true;
           right.E = true;
           right.F = true;
-          right.G = true;
+          right.G = false;
         }
         else if (number_to_display == 41)
         {
@@ -1062,17 +1062,17 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.C = true;
           left.D = false;
           left.E = false;
-          left.F = false;
-          left.G = false;
+          left.F = true;
+          left.G = true;
 
           // Load right display
-          right.A = true;
-          right.B = false;
+          right.A = false;
+          right.B = true;
           right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
         }
         else if (number_to_display == 42)
         {
@@ -1082,8 +1082,8 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.C = true;
           left.D = false;
           left.E = false;
-          left.F = false;
-          left.G = false;
+          left.F = true;
+          left.G = true;
 
           // Load right display
           right.A = true;
