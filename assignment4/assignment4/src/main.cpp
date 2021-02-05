@@ -2,6 +2,7 @@
 #include <Arduino_FreeRTOS.h>
 #include <semphr.h>
 #include <queue.h>
+#define DEBUG_FLAG 0
 
 // Define the tasks
 void LED_TASK(void *pvParameters);
@@ -142,8 +143,10 @@ void setup()
       Serial.println(F("DP_TASK: Creation Error, not enough heap or stack!"));
   }
 
-  // Now the task scheduler, which takes over control of scheduling individual tasks, is automatically started.
+// Now the task scheduler, which takes over control of scheduling individual tasks, is automatically started.
+#if DEBUG_FLAG
   Serial.println(F("setup: Reached end of setup! Success!"));
+#endif
 }
 
 void LED_TASK(void *pvParameters) // This is a task.
@@ -157,7 +160,9 @@ void LED_TASK(void *pvParameters) // This is a task.
     // Let's check if the semaphore is available
     if (xSemaphoreTake(LED_SEMAPHORE, 0) == pdTRUE)
     {
+#if DEBUG_FLAG
       Serial.println(F("LED_TASK: semaphore taken!"));
+#endif
       // we got it, let us do some stuff
       byte status = digitalRead(13);
       if (status)
@@ -189,11 +194,12 @@ void CNT_TASK(void *pvParameters) // This is a task.
       Forward = false;
     else if (Forward == false && Count == 0)
       Forward = true;
-
+#if DEBUG_FLAG
     Serial.print(F("CNT_TASK: Sending number to CNTQ - "));
     Serial.println(Count);
-    // we are done, give semaphore, and delay
     Serial.println(F("CNT_TASK: semaphore given!"));
+#endif
+    // we are done, give semaphore, and delay
     xSemaphoreGive(LED_SEMAPHORE);
 
     // we sent the number to the CNTQ (counter queue)
@@ -230,8 +236,10 @@ void DR_TASK(void *pvParameters) // This is a task.
     {
       if (xQueueReceive(CNTQ, &number_to_display, (TickType_t)10) == pdPASS)
       {
+#if DEBUG_FLAG
         Serial.print(F("DR_TASK: Received number from CNTQ - "));
         Serial.println(number_to_display);
+#endif
 
         // Let's encode the number we got into the display struct
         if (number_to_display == 0)
@@ -1102,8 +1110,10 @@ void DR_TASK(void *pvParameters) // This is a task.
           xQueueSend(LQ, &left, (TickType_t)10);
           xQueueSend(RQ, &right, (TickType_t)10);
 
-          // Now we give DP_SEMAPHORE
+// Now we give DP_SEMAPHORE
+#if DEBUG_FLAG
           Serial.println(F("DR_TASK: semaphore given!"));
+#endif
           xSemaphoreGive(DP_SEMAPHORE);
         }
         else
@@ -1154,20 +1164,41 @@ void DP_TASK(void *pvParameters) // This is a task.
     bool G;
   };
 
+  // Create left and right struct
   struct display left;
   struct display right;
+  // init struct to false;
+  left.A = false;
+  left.B = false;
+  left.C = false;
+  left.D = false;
+  left.E = false;
+  left.F = false;
+  left.G = false;
+
+  right.A = false;
+  right.B = false;
+  right.C = false;
+  right.D = false;
+  right.E = false;
+  right.F = false;
+  right.G = false;
 
   for (;;)
   {
     // Let's check if the semaphore is available
     if (xSemaphoreTake(DP_SEMAPHORE, 0) == pdTRUE)
     {
+
+#if DEBUG_FLAG
       Serial.println(F("DP_TASK: semaphore taken!"));
+#endif
       if (LQ != NULL && RQ != NULL)
       {
         // Check and grab data from both left and right queues
         if ((xQueueReceive(LQ, &left, (TickType_t)10) == pdPASS) && (xQueueReceive(RQ, &right, (TickType_t)10) == pdPASS))
         {
+#if DEBUG_FLAG
           Serial.print(F("DP_TASK: Received from  LQ - "));
           Serial.print(left.A);
           Serial.print(left.B);
@@ -1185,12 +1216,13 @@ void DP_TASK(void *pvParameters) // This is a task.
           Serial.print(right.E);
           Serial.print(right.F);
           Serial.println(right.G);
-
-          vTaskDelay(pdMS_TO_TICKS(50));
+#endif
+          // Clear both
+          digitalWrite(44, HIGH);
+          digitalWrite(46, HIGH);
 
           // Set left display
           digitalWrite(44, LOW);
-          digitalWrite(46, HIGH);
           digitalWrite(4, left.A);
           digitalWrite(5, left.B);
           digitalWrite(6, left.C);
@@ -1198,11 +1230,10 @@ void DP_TASK(void *pvParameters) // This is a task.
           digitalWrite(8, left.E);
           digitalWrite(9, left.F);
           digitalWrite(10, left.G);
-
-          vTaskDelay(pdMS_TO_TICKS(50));
+          vTaskDelay(pdMS_TO_TICKS(17));
+          digitalWrite(44, HIGH);
 
           // Set right display
-          digitalWrite(44, HIGH);
           digitalWrite(46, LOW);
           digitalWrite(4, right.A);
           digitalWrite(5, right.B);
@@ -1211,7 +1242,8 @@ void DP_TASK(void *pvParameters) // This is a task.
           digitalWrite(8, right.E);
           digitalWrite(9, right.F);
           digitalWrite(10, right.G);
-
+          vTaskDelay(pdMS_TO_TICKS(17));
+          digitalWrite(46, HIGH);
         }
       }
     }
