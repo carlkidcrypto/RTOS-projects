@@ -51,14 +51,14 @@ void setup()
     bool G;
   };
 
-  LQ = xQueueCreate(1, sizeof(struct display));
+  LQ = xQueueCreate(10, sizeof(struct display));
   if (LQ == NULL)
   {
     for (;;)
       Serial.println(F("LQ: Creation Error, not enough heap mem!"));
   }
 
-  RQ = xQueueCreate(1, sizeof(struct display));
+  RQ = xQueueCreate(10, sizeof(struct display));
   if (RQ == NULL)
   {
     for (;;)
@@ -1186,6 +1186,34 @@ void DP_TASK(void *pvParameters) // This is a task.
 
   for (;;)
   {
+    // Clear both
+    digitalWrite(44, HIGH);
+    digitalWrite(46, HIGH);
+
+    // Set left display
+    digitalWrite(44, LOW);
+    digitalWrite(4, left.A);
+    digitalWrite(5, left.B);
+    digitalWrite(6, left.C);
+    digitalWrite(7, left.D);
+    digitalWrite(8, left.E);
+    digitalWrite(9, left.F);
+    digitalWrite(10, left.G);
+    vTaskDelay(pdMS_TO_TICKS(17));
+    digitalWrite(44, HIGH);
+
+    // Set right display
+    digitalWrite(46, LOW);
+    digitalWrite(4, right.A);
+    digitalWrite(5, right.B);
+    digitalWrite(6, right.C);
+    digitalWrite(7, right.D);
+    digitalWrite(8, right.E);
+    digitalWrite(9, right.F);
+    digitalWrite(10, right.G);
+    vTaskDelay(pdMS_TO_TICKS(17));
+    digitalWrite(46, HIGH);
+  
     // Let's check if the semaphore is available
     if (xSemaphoreTake(DP_SEMAPHORE, 0) == pdTRUE)
     {
@@ -1217,33 +1245,6 @@ void DP_TASK(void *pvParameters) // This is a task.
           Serial.print(right.F);
           Serial.println(right.G);
 #endif
-          // Clear both
-          digitalWrite(44, HIGH);
-          digitalWrite(46, HIGH);
-
-          // Set left display
-          digitalWrite(44, LOW);
-          digitalWrite(4, left.A);
-          digitalWrite(5, left.B);
-          digitalWrite(6, left.C);
-          digitalWrite(7, left.D);
-          digitalWrite(8, left.E);
-          digitalWrite(9, left.F);
-          digitalWrite(10, left.G);
-          vTaskDelay(pdMS_TO_TICKS(17));
-          digitalWrite(44, HIGH);
-
-          // Set right display
-          digitalWrite(46, LOW);
-          digitalWrite(4, right.A);
-          digitalWrite(5, right.B);
-          digitalWrite(6, right.C);
-          digitalWrite(7, right.D);
-          digitalWrite(8, right.E);
-          digitalWrite(9, right.F);
-          digitalWrite(10, right.G);
-          vTaskDelay(pdMS_TO_TICKS(17));
-          digitalWrite(46, HIGH);
         }
       }
     }
