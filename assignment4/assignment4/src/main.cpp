@@ -51,14 +51,14 @@ void setup()
     bool G;
   };
 
-  LQ = xQueueCreate(10, sizeof(struct display));
+  LQ = xQueueCreate(1, sizeof(struct display));
   if (LQ == NULL)
   {
     for (;;)
       Serial.println(F("LQ: Creation Error, not enough heap mem!"));
   }
 
-  RQ = xQueueCreate(10, sizeof(struct display));
+  RQ = xQueueCreate(1, sizeof(struct display));
   if (RQ == NULL)
   {
     for (;;)
