@@ -8,4 +8,4 @@ You can build an additional two tasks to do this.  One to display the left digit
 
 ## Block Diagram
 
-![Block Diagram](https://github.com/carlkid1499/CS452/tree/assignment4/assignment4/diagrams)
+![Block Diagram](https://github.com/carlkid1499/CS452/blob/assignment4/assignment4/diagrams/Block_Diagram.pdf)
