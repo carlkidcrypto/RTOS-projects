@@ -8,4 +8,4 @@ You can build an additional two tasks to do this.  One to display the left digit
 
 ## Block Diagram
 
-![Block Diagram](diagrams/Block_Diagram.pdf])
+![Block Diagram](/diagrams/Block_Diagram.pdf])
