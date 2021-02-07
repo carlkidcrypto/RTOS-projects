@@ -251,7 +251,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.D = true;
           left.E = true;
           left.F = true;
-          left.G = true;
+          left.G = false;
 
           // Load right display
           right.A = true;
@@ -260,7 +260,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.D = true;
           right.E = true;
           right.F = true;
-          right.G = true;
+          right.G = false;
         }
         else if (number_to_display == 1)
         {
@@ -1102,6 +1102,9 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.F = false;
           right.G = true;
         }
+        else
+          // We didn't get a vald number
+          taskYIELD();
 
         // Once we get here left and right should be loaded
         if (LQ != NULL && RQ != NULL)
@@ -1120,9 +1123,11 @@ void DR_TASK(void *pvParameters) // This is a task.
           taskYIELD();
       }
       else
+        // failed to get item out of queue, Yield
         taskYIELD();
     }
     else
+      // Queue is full or something... Yield
       taskYIELD();
   }
 }
@@ -1213,7 +1218,7 @@ void DP_TASK(void *pvParameters) // This is a task.
     digitalWrite(10, right.G);
     vTaskDelay(pdMS_TO_TICKS(17));
     digitalWrite(46, HIGH);
-  
+
     // Let's check if the semaphore is available
     if (xSemaphoreTake(DP_SEMAPHORE, 0) == pdTRUE)
     {
@@ -1246,7 +1251,13 @@ void DP_TASK(void *pvParameters) // This is a task.
           Serial.println(right.G);
 #endif
         }
+        else
+          // We tried to grab the number but failed.  Yield anyway
+          taskYIELD();
       }
+      else
+        // Nothing for us to do, yield again
+        taskYIELD();
     }
     else
       // Semaphore isn't available lets yield for other tasks
