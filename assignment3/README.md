@@ -1,4 +1,4 @@
-# Assignment 3 (Vandaluino3)
+# Assignment 3 (Vandaluino2)
 
 1. Install the FreeRTOS package for Arduino
 2. Tutorial: <https://create.arduino.cc/projecthub/feilipu/using-freertos-multi-tasking-in-arduino-ebc3cc>
