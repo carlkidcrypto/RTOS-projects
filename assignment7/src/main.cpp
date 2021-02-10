@@ -190,7 +190,7 @@ void CNT_TASK(void *pvParameters) // This is a task.
     else
       Count--;
 
-    if (Forward == true && Count >= 42)
+    if (Forward == true && Count >= 99)
       Forward = false;
     else if (Forward == false && Count == 0)
       Forward = true;
@@ -1064,6 +1064,1140 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.D = true;
           right.E = true;
           right.F = false;
+          right.G = true;
+          break;
+
+        case 43:
+          // Load left display
+          left.A = false;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = false;
+          right.F = false;
+          right.G = true;
+          break;
+
+        case 44:
+          // Load left display
+          left.A = false;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = false;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 45:
+          // Load left display
+          left.A = false;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = true;
+          right.D = true;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 46:
+          // Load left display
+          left.A = false;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+        case 47:
+          // Load left display
+          left.A = false;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
+          break;
+
+        case 48:
+          // Load left display
+          left.A = false;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 49:
+          // Load left display
+          left.A = false;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 50:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = false;
+          break;
+
+        case 51:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = false;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
+          break;
+
+        case 52:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = false;
+          right.D = true;
+          right.E = true;
+          right.F = false;
+          right.G = true;
+          break;
+
+        case 53:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = false;
+          right.F = false;
+          right.G = true;
+          break;
+
+        case 54:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = false;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 55:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = true;
+          right.D = true;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 56:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+        case 57:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
+          break;
+
+        case 58:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 59:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 60:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = false;
+          break;
+
+        case 61:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = false;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
+          break;
+
+        case 62:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = false;
+          right.D = true;
+          right.E = true;
+          right.F = false;
+          right.G = true;
+          break;
+
+        case 63:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = false;
+          right.F = false;
+          right.G = true;
+          break;
+
+        case 64:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = false;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 65:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = true;
+          right.D = true;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 66:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+        case 67:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
+          break;
+
+        case 68:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 69:
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 70:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = false;
+          left.G = false;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = false;
+          break;
+
+        case 71:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = false;
+          left.G = false;
+
+          // Load right display
+          right.A = false;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
+          break;
+
+        case 72:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = false;
+          left.G = false;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = false;
+          right.D = true;
+          right.E = true;
+          right.F = false;
+          right.G = true;
+          break;
+
+        case 73:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = false;
+          left.G = false;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = false;
+          right.F = false;
+          right.G = true;
+          break;
+
+        case 74:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = false;
+          left.G = false;
+
+          // Load right display
+          right.A = false;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 75:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = false;
+          left.G = false;
+
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = true;
+          right.D = true;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 76:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = false;
+          left.G = false;
+
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+        case 77:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = false;
+          left.G = false;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
+          break;
+
+        case 78:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = false;
+          left.G = false;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 79:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = false;
+          left.G = false;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 80:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = false;
+          break;
+
+        case 81:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = false;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
+          break;
+
+        case 82:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = false;
+          right.D = true;
+          right.E = true;
+          right.F = false;
+          right.G = true;
+          break;
+
+        case 83:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = false;
+          right.F = false;
+          right.G = true;
+          break;
+
+        case 84:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = false;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 85:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = true;
+          right.D = true;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 86:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+        case 87:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
+          break;
+
+        case 88:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 89:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 90:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = false;
+          break;
+
+        case 91:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = false;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
+          break;
+
+        case 92:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = false;
+          right.D = true;
+          right.E = true;
+          right.F = false;
+          right.G = true;
+          break;
+
+        case 93:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = false;
+          right.F = false;
+          right.G = true;
+          break;
+
+        case 94:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = false;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 95:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = true;
+          right.D = true;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 96:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+        case 97:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
+          break;
+
+        case 98:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 99:
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = true;
           right.G = true;
           break;
 
