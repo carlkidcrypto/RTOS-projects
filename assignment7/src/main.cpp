@@ -2,7 +2,7 @@
 #include <Arduino_FreeRTOS.h>
 #include <semphr.h>
 #include <queue.h>
-#define DEBUG_FLAG 0
+#define DEBUG_FLAG 1
 
 // Define the tasks
 void LED_TASK(void *pvParameters);
@@ -51,6 +51,9 @@ void setup()
     bool G;
   };
 
+  // Define char array for display
+  char display_arr[3];
+
   LQ = xQueueCreate(1, sizeof(struct display));
   if (LQ == NULL)
   {
@@ -65,7 +68,7 @@ void setup()
       Serial.println(F("RQ: Creation Error, not enough heap mem!"));
   }
 
-  CNTQ = xQueueCreate(1, sizeof(byte));
+  CNTQ = xQueueCreate(1, sizeof(display_arr));
   if (CNTQ == NULL)
   {
     for (;;)
@@ -205,8 +208,10 @@ void CNT_TASK(void *pvParameters) // This is a task.
     // we sent the number to the CNTQ (counter queue)
     if (CNTQ != NULL)
     {
+      char buff[3];
+      sprintf(buff, "%02", Count);
       // Block for 10 ticks if CNTQ is full
-      xQueueSend(CNTQ, &Count, (TickType_t)10);
+      xQueueSend(CNTQ, &buff, (TickType_t)10);
     }
     vTaskDelay(pdMS_TO_TICKS(500));
   }
@@ -214,7 +219,9 @@ void CNT_TASK(void *pvParameters) // This is a task.
 
 void DR_TASK(void *pvParameters) // This is a task.
 {
-  byte number_to_display;
+  // Define display array
+  char display_arr[3];
+
   // Define the struct
   struct display
   {
@@ -234,20 +241,20 @@ void DR_TASK(void *pvParameters) // This is a task.
   {
     if (CNTQ != NULL)
     {
-      if (xQueueReceive(CNTQ, &number_to_display, (TickType_t)10) == pdPASS)
+      if (xQueueReceive(CNTQ, &display_arr, (TickType_t)10) == pdPASS)
       {
 #if DEBUG_FLAG
         Serial.print(F("DR_TASK: Received number from CNTQ - "));
-        Serial.println(number_to_display);
+        Serial.println(display_arr);
 #endif
 
-        // Let's encode the number we got into the display struct
-
-        switch (number_to_display)
+        // Let's encode the left digit first
+        switch (display_arr[0])
         {
 
-        /***** BEGIN: Cases for all base ten digits *****/
-        case 0:
+        /***** BEGIN: Cases for all base ten digits 0 - 9 *****/
+        case '0':
+
           // Load left display
           left.A = true;
           left.B = true;
@@ -256,189 +263,10 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = true;
           left.F = true;
           left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = false;
           break;
 
-        case 1:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = false;
+        case '1':
 
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-        case 2:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = false;
-          right.D = true;
-          right.E = true;
-          right.F = false;
-          right.G = true;
-          break;
-        case 3:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = false;
-          right.G = true;
-          break;
-        case 4:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = false;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-        case 5:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-        case 6:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-        case 7:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-        case 8:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-        case 9:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-        case 10:
           // Load left display
           left.A = false;
           left.B = true;
@@ -447,188 +275,9 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = false;
           left.F = false;
           left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = false;
           break;
-        case 11:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
+        case '2':
 
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-        case 12:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = false;
-          right.D = true;
-          right.E = true;
-          right.F = false;
-          right.G = true;
-          break;
-        case 13:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = false;
-          right.G = true;
-          break;
-        case 14:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-        case 15:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-        case 16:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-        case 17:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-        case 18:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-        case 19:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-        case 20:
           // Load left display
           left.A = true;
           left.B = true;
@@ -637,1578 +286,491 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = true;
           left.F = false;
           left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = false;
           break;
-        case 21:
+        case '3':
+
           // Load left display
           left.A = true;
           left.B = true;
+          left.C = true;
+          left.D = true;
+          left.E = false;
+          left.F = false;
+          left.G = true;
+          break;
+        case '4':
+
+          // Load left display
+          left.A = false;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+          break;
+        case '5':
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+          break;
+        case '6':
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+          break;
+        case '7':
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = false;
+          left.G = false;
+          break;
+        case '8':
+
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+          break;
+        case '9':
+
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = false;
+          left.F = true;
+          left.G = true;
+          break;
+
+          /***** END: Cases for all base ten digits 0 - 9 *****/
+
+          /***** BEGIN: Cases for all base sixteen digits A - F *****/
+          // Upper Case Cases
+        case 'A':
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = true;
+          left.F = true;
+          left.G = false;
+          break;
+
+        case 'B':
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+          break;
+
+        case 'C':
+          // Load left display
+          left.A = true;
+          left.B = false;
           left.C = false;
           left.D = true;
           left.E = true;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
+          left.F = true;
+          left.G = false;
           break;
-        case 22:
+
+        case 'D':
           // Load left display
           left.A = true;
           left.B = true;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = false;
+          break;
+
+        case 'E':
+          // Load left display
+          left.A = true;
+          left.B = false;
           left.C = false;
           left.D = true;
           left.E = true;
-          left.F = false;
+          left.F = true;
           left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = false;
-          right.D = true;
-          right.E = true;
-          right.F = false;
-          right.G = true;
           break;
-        case 23:
+
+        case 'F':
+          // Load left display
+          left.A = true;
+          left.B = false;
+          left.C = false;
+          left.D = false;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+          break;
+
+        // Lower Case Cases
+        case 'a':
           // Load left display
           left.A = true;
           left.B = true;
+          left.C = true;
+          left.D = false;
+          left.E = true;
+          left.F = true;
+          left.G = false;
+          break;
+
+        case 'b':
+          // Load left display
+          left.A = true;
+          left.B = true;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = true;
+          break;
+
+        case 'c':
+          // Load left display
+          left.A = true;
+          left.B = false;
           left.C = false;
           left.D = true;
           left.E = true;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = false;
-          right.G = true;
+          left.F = true;
+          left.G = false;
           break;
-        case 24:
+
+        case 'd':
           // Load left display
           left.A = true;
           left.B = true;
+          left.C = true;
+          left.D = true;
+          left.E = true;
+          left.F = true;
+          left.G = false;
+          break;
+
+        case 'e':
+          // Load left display
+          left.A = true;
+          left.B = false;
           left.C = false;
           left.D = true;
           left.E = true;
-          left.F = false;
+          left.F = true;
           left.G = true;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
           break;
-        case 25:
+
+        case 'f':
           // Load left display
           left.A = true;
-          left.B = true;
+          left.B = false;
           left.C = false;
-          left.D = true;
-          left.E = true;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-        case 26:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = false;
-          left.D = true;
-          left.E = true;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-        case 27:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = false;
-          left.D = true;
-          left.E = true;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-        case 28:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = false;
-          left.D = true;
-          left.E = true;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-        case 29:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = false;
-          left.D = true;
-          left.E = true;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-        case 30:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = false;
-          break;
-        case 31:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-        case 32:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = false;
-          right.D = true;
-          right.E = true;
-          right.F = false;
-          right.G = true;
-          break;
-        case 33:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = false;
-          right.G = true;
-          break;
-        case 34:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-        case 35:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-        case 36:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-        case 37:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-        case 38:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-        case 39:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = false;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-        case 40:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
           left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = false;
-          break;
-        case 41:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-
-        case 42:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = false;
-          right.D = true;
-          right.E = true;
-          right.F = false;
-          right.G = true;
-          break;
-
-        case 43:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = false;
-          right.G = true;
-          break;
-
-        case 44:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 45:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 46:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-        case 47:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-
-        case 48:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 49:
-          // Load left display
-          left.A = false;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 50:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = false;
-          break;
-
-        case 51:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-
-        case 52:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = false;
-          right.D = true;
-          right.E = true;
-          right.F = false;
-          right.G = true;
-          break;
-
-        case 53:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = false;
-          right.G = true;
-          break;
-
-        case 54:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 55:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 56:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-        case 57:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-
-        case 58:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 59:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 60:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
           left.E = true;
           left.F = true;
           left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = false;
           break;
-
-        case 61:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-
-        case 62:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = false;
-          right.D = true;
-          right.E = true;
-          right.F = false;
-          right.G = true;
-          break;
-
-        case 63:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = false;
-          right.G = true;
-          break;
-
-        case 64:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 65:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 66:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-        case 67:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-
-        case 68:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 69:
-          // Load left display
-          left.A = true;
-          left.B = false;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 70:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = false;
-          break;
-
-        case 71:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-
-        case 72:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = false;
-          right.D = true;
-          right.E = true;
-          right.F = false;
-          right.G = true;
-          break;
-
-        case 73:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = false;
-          right.G = true;
-          break;
-
-        case 74:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 75:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 76:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-        case 77:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-
-        case 78:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 79:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = false;
-          left.G = false;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 80:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = false;
-          break;
-
-        case 81:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-
-        case 82:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = false;
-          right.D = true;
-          right.E = true;
-          right.F = false;
-          right.G = true;
-          break;
-
-        case 83:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = false;
-          right.G = true;
-          break;
-
-        case 84:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 85:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 86:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-        case 87:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-
-        case 88:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 89:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = true;
-          left.E = true;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 90:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = false;
-          break;
-
-        case 91:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-
-        case 92:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = false;
-          right.D = true;
-          right.E = true;
-          right.F = false;
-          right.G = true;
-          break;
-
-        case 93:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = false;
-          right.G = true;
-          break;
-
-        case 94:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = false;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 95:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 96:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = false;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-        case 97:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = false;
-          right.G = false;
-          break;
-
-        case 98:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = true;
-          right.E = true;
-          right.F = true;
-          right.G = true;
-          break;
-
-        case 99:
-          // Load left display
-          left.A = true;
-          left.B = true;
-          left.C = true;
-          left.D = false;
-          left.E = false;
-          left.F = true;
-          left.G = true;
-
-          // Load right display
-          right.A = true;
-          right.B = true;
-          right.C = true;
-          right.D = false;
-          right.E = false;
-          right.F = true;
-          right.G = true;
-          break;
-
-          /***** END: Cases for all base ten digits *****/
-
-          /***** BEGIN: Cases for all base sixteen digits *****/
-          /***** END: Cases for all base sixteen digits *****/
+          /***** END: Cases for all base sixteen digits A - F *****/
 
         // Nothing Matched
         default:
-          taskYIELD();
+          // Load left display
+          left.A = false;
+          left.B = false;
+          left.C = false;
+          left.D = false;
+          left.E = false;
+          left.F = false;
+          left.G = false;
+
+          break;
+        }
+
+        // Let's encode the second digit last
+        switch (display_arr[1])
+        {
+
+        /***** BEGIN: Cases for all base ten digits 0 - 9 *****/
+        case '0':
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = false;
+          break;
+
+        case '1':
+          // Load right display
+          right.A = false;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
+          break;
+        case '2':
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = false;
+          right.D = true;
+          right.E = true;
+          right.F = false;
+          right.G = true;
+          break;
+        case '3':
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = false;
+          right.F = false;
+          right.G = true;
+          break;
+        case '4':
+          // Load right display
+          right.A = false;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+        case '5':
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = true;
+          right.D = true;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+        case '6':
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+        case '7':
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = false;
+          right.G = false;
+          break;
+        case '8':
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+        case '9':
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = false;
+          right.F = true;
+          right.G = true;
+          break;
+
+          /***** END: Cases for all base ten digits 0 - 9 *****/
+
+          /***** BEGIN: Cases for all base sixteen digits A - F *****/
+
+        // Upper Case Cases
+        case 'A':
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = true;
+          right.F = true;
+          right.G = false;
+          break;
+
+        case 'B':
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 'C':
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = false;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = false;
+          break;
+
+        case 'D':
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = false;
+          break;
+
+        case 'E':
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = false;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 'F':
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = false;
+          right.D = false;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+
+        // Lower Case Cases
+        case 'a':
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = false;
+          right.E = true;
+          right.F = true;
+          right.G = false;
+          break;
+
+        case 'b':
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 'c':
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = false;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = false;
+          break;
+
+        case 'd':
+          // Load right display
+          right.A = true;
+          right.B = true;
+          right.C = true;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = false;
+          break;
+
+        case 'e':
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = false;
+          right.D = true;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+
+        case 'f':
+          // Load right display
+          right.A = true;
+          right.B = false;
+          right.C = false;
+          right.D = false;
+          right.E = true;
+          right.F = true;
+          right.G = true;
+          break;
+
+          /***** END: Cases for all base sixteen digits A - F *****/
+
+        // Nothing Matched
+        default:
+          // Load left display
+          left.A = false;
+          left.B = false;
+          left.C = false;
+          left.D = false;
+          left.E = false;
+          left.F = false;
+          left.G = false;
         }
 
         // Once we get here left and right should be loaded
