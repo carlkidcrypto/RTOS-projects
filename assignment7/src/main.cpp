@@ -5,18 +5,19 @@
 #define DEBUG_FLAG 1
 
 // Define the tasks
-void LED_TASK(void *pvParameters);
-void CNT_TASK(void *pvParameters);
-void DR_TASK(void *pvParameters);
-void DP_TASK(void *pvParameters);
+void DS_TASK(void *pvParameters); // DIP Switch Task
+void SM_TASK(void *pvParameters); // Stepper Motor Task
+void HT_TASK(void *pvParameters); // Humidity Temperature Task
+void DR_TASK(void *pvParameters); // Display Driver Task
+void DP_TASK(void *pvParameters); // Display Task
 void setup();
 void loop();
 
 // Define the Semaphores
-SemaphoreHandle_t LED_SEMAPHORE, DP_SEMAPHORE;
+SemaphoreHandle_t DP_SEMAPHORE;
 
 // Define the Queues
-QueueHandle_t LQ, RQ, CNTQ;
+QueueHandle_t LQ, RQ, DRQ; // Left Queue, Right Queue, Driver Queue
 
 // the setup function runs once when you press reset or power the board
 void setup()
@@ -25,15 +26,8 @@ void setup()
   Serial.begin(115200);
 
   // Create the Semaphores
-  LED_SEMAPHORE = xSemaphoreCreateBinary();
-  if (LED_SEMAPHORE == NULL)
-  {
-    for (;;)
-      Serial.println(F("LED_SEMAPHORE: Creation Error, no enough heap mem!"));
-  }
-
   DP_SEMAPHORE = xSemaphoreCreateBinary();
-  if (LED_SEMAPHORE == NULL)
+  if (DP_SEMAPHORE == NULL)
   {
     for (;;)
       Serial.println(F("DP_SEMAPHORE: Creation Error, not enough heap mem!"));
@@ -69,35 +63,16 @@ void setup()
       Serial.println(F("RQ: Creation Error, not enough heap mem!"));
   }
 
-  CNTQ = xQueueCreate(1, sizeof(display_arr));
-  if (CNTQ == NULL)
+  DRQ = xQueueCreate(1, sizeof(display_arr));
+  if (DRQ == NULL)
   {
     for (;;)
-      Serial.println(F("CNTQ: Creation Error, not enough heap mem!"));
+      Serial.println(F("DRQ: Creation Error, not enough heap mem!"));
   }
 
-  // Send stuff to temp queue TQ
-  //xQueueSend(TQ, &LED_SEMAPHORE, 0);
-
-  BaseType_t xCNT_RTVAL = xTaskCreate(
-      CNT_TASK, "CNT_TASK" // The counter task, 0-42, then 42-0
-      ,
-      256 // Stack size
-      ,
-      NULL // parameters
-      ,
-      tskIDLE_PRIORITY + 2 // priority
-      ,
-      NULL);
-
-  if (xCNT_RTVAL != pdPASS)
-  {
-    for (;;)
-      Serial.println(F("CNT_TASK: Creation Error, not enough heap or stack!"));
-  }
-
-  BaseType_t xLED_RTVAL = xTaskCreate(
-      LED_TASK, "LED_TASK" // Responsible for blinking LED on pin D13
+ 
+ BaseType_t xDS_RTVAL = xTaskCreate(
+      DS_TASK, "DS_TASK"
       ,
       256 // Stack size
       ,
@@ -107,10 +82,44 @@ void setup()
       ,
       NULL);
 
-  if (xLED_RTVAL != pdPASS)
+  if (xDS_RTVAL != pdPASS)
   {
     for (;;)
-      Serial.println(F("LED_TASK: Creation Error, not enough heap or stack!"));
+      Serial.println(F("DS_TASK: Creation Error, not enough heap or stack!"));
+  }
+
+  BaseType_t xSM_RTVAL = xTaskCreate(
+      SM_TASK, "SM_TASK"
+      ,
+      256 // Stack size
+      ,
+      NULL // parameters
+      ,
+      tskIDLE_PRIORITY // priority
+      ,
+      NULL);
+
+  if (xSM_RTVAL != pdPASS)
+  {
+    for (;;)
+      Serial.println(F("SM_TASK: Creation Error, not enough heap or stack!"));
+  }
+
+  BaseType_t xHT_RTVAL = xTaskCreate(
+      HT_TASK, "HT_TASK"
+      ,
+      256 // Stack size
+      ,
+      NULL // parameters
+      ,
+      tskIDLE_PRIORITY // priority
+      ,
+      NULL);
+
+  if (xHT_RTVAL != pdPASS)
+  {
+    for (;;)
+      Serial.println(F("HT_TASK: Creation Error, not enough heap or stack!"));
   }
 
   BaseType_t xDR_RTVAL = xTaskCreate(
@@ -153,69 +162,25 @@ void setup()
 #endif
 }
 
-void LED_TASK(void *pvParameters) // This is a task.
+void DS_TASK(void *pvParameters) // This is a task.
 {
-
-  // initialize digital pin 13 as an output.
-  pinMode(13, OUTPUT);
-
   for (;;)
   {
-    // Let's check if the semaphore is available
-    if (xSemaphoreTake(LED_SEMAPHORE, 0) == pdTRUE)
-    {
-#if DEBUG_FLAG
-      Serial.println(F("LED_TASK: semaphore taken!"));
-#endif
-      // we got it, let us do some stuff
-      byte status = digitalRead(13);
-      if (status)
-        digitalWrite(13, LOW);
-      else
-        digitalWrite(13, HIGH);
-    }
-    else
-      // Semaphore isn't available lets yield for other tasks
-      taskYIELD();
   }
 }
 
-void CNT_TASK(void *pvParameters) // This is a task.
+void SM_TASK(void *pvParameters) // This is a task.
 {
-  // Our Counter Variable
-  byte Count = 0;
-  // Are we counting
-  bool Forward = true;
 
   for (;;)
   {
-    if (Forward)
-      Count++;
-    else
-      Count--;
+  }
+}
 
-    if (Forward == true && Count >= 255)
-      Forward = false;
-    else if (Forward == false && Count == 0)
-      Forward = true;
-#if DEBUG_FLAG
-    Serial.print(F("CNT_TASK: Sending number to CNTQ - "));
-    Serial.println(Count);
-    Serial.println(F("CNT_TASK: semaphore given!"));
-#endif
-    // we are done, give semaphore, and delay
-    xSemaphoreGive(LED_SEMAPHORE);
-
-    // we sent the number to the CNTQ (counter queue)
-    if (CNTQ != NULL)
-    {
-      char buff[3];
-      // note %02x is hex, %02d is dec %02 means two digits
-      sprintf(buff, "%02x", Count);
-      // Block for 10 ticks if CNTQ is full
-      xQueueSend(CNTQ, &buff, (TickType_t)10);
-    }
-    vTaskDelay(pdMS_TO_TICKS(500));
+void HT_TASK(void *pvParameters) // This is a task.
+{
+  for (;;)
+  {
   }
 }
 
@@ -242,12 +207,12 @@ void DR_TASK(void *pvParameters) // This is a task.
 
   for (;;)
   {
-    if (CNTQ != NULL)
+    if (DRQ != NULL)
     {
-      if (xQueueReceive(CNTQ, &display_arr, (TickType_t)10) == pdPASS)
+      if (xQueueReceive(DRQ, &display_arr, (TickType_t)10) == pdPASS)
       {
 #if DEBUG_FLAG
-        Serial.print(F("DR_TASK: Received number from CNTQ - "));
+        Serial.print(F("DR_TASK: Received number from DRQ - "));
         Serial.println(display_arr);
 #endif
 
@@ -923,8 +888,7 @@ void DP_TASK(void *pvParameters) // This is a task.
     digitalWrite(9, left.F);
     digitalWrite(10, left.G);
     digitalWrite(11, left.DP);
-
-    vTaskDelay(pdMS_TO_TICKS(17));
+    vTaskDelay(1);
     digitalWrite(44, HIGH);
 
     // Set right display
@@ -937,7 +901,7 @@ void DP_TASK(void *pvParameters) // This is a task.
     digitalWrite(9, right.F);
     digitalWrite(10, right.G);
     digitalWrite(11, right.DP);
-    vTaskDelay(pdMS_TO_TICKS(17));
+    vTaskDelay(1);
     digitalWrite(46, HIGH);
 
     // Let's check if the semaphore is available
