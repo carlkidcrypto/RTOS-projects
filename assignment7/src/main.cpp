@@ -49,6 +49,7 @@ void setup()
     bool E;
     bool F;
     bool G;
+    bool DP;
   };
 
   // Define char array for display
@@ -193,7 +194,7 @@ void CNT_TASK(void *pvParameters) // This is a task.
     else
       Count--;
 
-    if (Forward == true && Count >= 99)
+    if (Forward == true && Count >= 255)
       Forward = false;
     else if (Forward == false && Count == 0)
       Forward = true;
@@ -209,7 +210,8 @@ void CNT_TASK(void *pvParameters) // This is a task.
     if (CNTQ != NULL)
     {
       char buff[3];
-      sprintf(buff, "%02", Count);
+      // note %02x is hex, %02d is dec %02 means two digits
+      sprintf(buff, "%02x", Count);
       // Block for 10 ticks if CNTQ is full
       xQueueSend(CNTQ, &buff, (TickType_t)10);
     }
@@ -232,6 +234,7 @@ void DR_TASK(void *pvParameters) // This is a task.
     bool E;
     bool F;
     bool G;
+    bool DP;
   };
 
   struct display left;
@@ -263,6 +266,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = true;
           left.F = true;
           left.G = false;
+          left.DP = false;
           break;
 
         case '1':
@@ -275,6 +279,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = false;
           left.F = false;
           left.G = false;
+          left.DP = false;
           break;
         case '2':
 
@@ -286,6 +291,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = true;
           left.F = false;
           left.G = true;
+          left.DP = false;
           break;
         case '3':
 
@@ -297,6 +303,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = false;
           left.F = false;
           left.G = true;
+          left.DP = false;
           break;
         case '4':
 
@@ -308,6 +315,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = false;
           left.F = true;
           left.G = true;
+          left.DP = false;
           break;
         case '5':
           // Load left display
@@ -318,6 +326,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = false;
           left.F = true;
           left.G = true;
+          left.DP = false;
           break;
         case '6':
           // Load left display
@@ -328,6 +337,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = true;
           left.F = true;
           left.G = true;
+          left.DP = false;
           break;
         case '7':
           // Load left display
@@ -338,6 +348,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = false;
           left.F = false;
           left.G = false;
+          left.DP = false;
           break;
         case '8':
 
@@ -349,6 +360,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = true;
           left.F = true;
           left.G = true;
+          left.DP = false;
           break;
         case '9':
 
@@ -360,6 +372,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = false;
           left.F = true;
           left.G = true;
+          left.DP = false;
           break;
 
           /***** END: Cases for all base ten digits 0 - 9 *****/
@@ -374,7 +387,8 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.D = false;
           left.E = true;
           left.F = true;
-          left.G = false;
+          left.G = true;
+          left.DP = false;
           break;
 
         case 'B':
@@ -386,6 +400,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = true;
           left.F = true;
           left.G = true;
+          left.DP = true;
           break;
 
         case 'C':
@@ -397,6 +412,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = true;
           left.F = true;
           left.G = false;
+          left.DP = false;
           break;
 
         case 'D':
@@ -408,6 +424,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = true;
           left.F = true;
           left.G = false;
+          left.DP = true;
           break;
 
         case 'E':
@@ -419,6 +436,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = true;
           left.F = true;
           left.G = true;
+          left.DP = false;
           break;
 
         case 'F':
@@ -430,6 +448,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = true;
           left.F = true;
           left.G = true;
+          left.DP = false;
           break;
 
         // Lower Case Cases
@@ -441,7 +460,8 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.D = false;
           left.E = true;
           left.F = true;
-          left.G = false;
+          left.G = true;
+          left.DP = false;
           break;
 
         case 'b':
@@ -453,6 +473,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = true;
           left.F = true;
           left.G = true;
+          left.DP = true;
           break;
 
         case 'c':
@@ -464,6 +485,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = true;
           left.F = true;
           left.G = false;
+          left.DP = false;
           break;
 
         case 'd':
@@ -475,6 +497,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = true;
           left.F = true;
           left.G = false;
+          left.DP = true;
           break;
 
         case 'e':
@@ -486,6 +509,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = true;
           left.F = true;
           left.G = true;
+          left.DP = false;
           break;
 
         case 'f':
@@ -497,6 +521,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = true;
           left.F = true;
           left.G = true;
+          left.DP = false;
           break;
           /***** END: Cases for all base sixteen digits A - F *****/
 
@@ -510,7 +535,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           left.E = false;
           left.F = false;
           left.G = false;
-
+          left.DP = false;
           break;
         }
 
@@ -528,6 +553,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = true;
           right.F = true;
           right.G = false;
+          right.DP = false;
           break;
 
         case '1':
@@ -539,6 +565,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = false;
           right.F = false;
           right.G = false;
+          right.DP = false;
           break;
         case '2':
           // Load right display
@@ -549,6 +576,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = true;
           right.F = false;
           right.G = true;
+          right.DP = false;
           break;
         case '3':
           // Load right display
@@ -559,6 +587,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = false;
           right.F = false;
           right.G = true;
+          right.DP = false;
           break;
         case '4':
           // Load right display
@@ -569,6 +598,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = false;
           right.F = true;
           right.G = true;
+          right.DP = false;
           break;
         case '5':
           // Load right display
@@ -579,6 +609,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = false;
           right.F = true;
           right.G = true;
+          right.DP = false;
           break;
         case '6':
           // Load right display
@@ -589,6 +620,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = true;
           right.F = true;
           right.G = true;
+          right.DP = false;
           break;
         case '7':
           // Load right display
@@ -599,6 +631,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = false;
           right.F = false;
           right.G = false;
+          right.DP = false;
           break;
         case '8':
           // Load right display
@@ -609,6 +642,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = true;
           right.F = true;
           right.G = true;
+          right.DP = false;
           break;
         case '9':
           // Load right display
@@ -619,6 +653,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = false;
           right.F = true;
           right.G = true;
+          right.DP = false;
           break;
 
           /***** END: Cases for all base ten digits 0 - 9 *****/
@@ -634,7 +669,8 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.D = false;
           right.E = true;
           right.F = true;
-          right.G = false;
+          right.G = true;
+          right.DP = false;
           break;
 
         case 'B':
@@ -646,6 +682,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = true;
           right.F = true;
           right.G = true;
+          right.DP = true;
           break;
 
         case 'C':
@@ -657,6 +694,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = true;
           right.F = true;
           right.G = false;
+          right.DP = false;
           break;
 
         case 'D':
@@ -668,6 +706,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = true;
           right.F = true;
           right.G = false;
+          right.DP = false;
           break;
 
         case 'E':
@@ -679,6 +718,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = true;
           right.F = true;
           right.G = true;
+          right.DP = false;
           break;
 
         case 'F':
@@ -690,6 +730,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = true;
           right.F = true;
           right.G = true;
+          right.DP = false;
           break;
 
         // Lower Case Cases
@@ -701,7 +742,8 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.D = false;
           right.E = true;
           right.F = true;
-          right.G = false;
+          right.G = true;
+          right.DP = false;
           break;
 
         case 'b':
@@ -713,6 +755,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = true;
           right.F = true;
           right.G = true;
+          right.DP = true;
           break;
 
         case 'c':
@@ -724,6 +767,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = true;
           right.F = true;
           right.G = false;
+          right.DP = false;
           break;
 
         case 'd':
@@ -735,6 +779,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = true;
           right.F = true;
           right.G = false;
+          right.DP = true;
           break;
 
         case 'e':
@@ -746,6 +791,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = true;
           right.F = true;
           right.G = true;
+          right.DP = false;
           break;
 
         case 'f':
@@ -757,6 +803,7 @@ void DR_TASK(void *pvParameters) // This is a task.
           right.E = true;
           right.F = true;
           right.G = true;
+          right.DP = false;
           break;
 
           /***** END: Cases for all base sixteen digits A - F *****/
@@ -809,6 +856,7 @@ void DP_TASK(void *pvParameters) // This is a task.
   pinMode(8, OUTPUT);
   pinMode(9, OUTPUT);
   pinMode(10, OUTPUT);
+  pinMode(11, OUTPUT);
 
   // Init left and right display as outputs
   pinMode(44, OUTPUT);
@@ -834,6 +882,7 @@ void DP_TASK(void *pvParameters) // This is a task.
     bool E;
     bool F;
     bool G;
+    bool DP;
   };
 
   // Create left and right struct
@@ -847,6 +896,7 @@ void DP_TASK(void *pvParameters) // This is a task.
   left.E = false;
   left.F = false;
   left.G = false;
+  left.DP = false;
 
   right.A = false;
   right.B = false;
@@ -855,6 +905,7 @@ void DP_TASK(void *pvParameters) // This is a task.
   right.E = false;
   right.F = false;
   right.G = false;
+  right.DP = false;
 
   for (;;)
   {
@@ -871,6 +922,8 @@ void DP_TASK(void *pvParameters) // This is a task.
     digitalWrite(8, left.E);
     digitalWrite(9, left.F);
     digitalWrite(10, left.G);
+    digitalWrite(11, left.DP);
+
     vTaskDelay(pdMS_TO_TICKS(17));
     digitalWrite(44, HIGH);
 
@@ -883,6 +936,7 @@ void DP_TASK(void *pvParameters) // This is a task.
     digitalWrite(8, right.E);
     digitalWrite(9, right.F);
     digitalWrite(10, right.G);
+    digitalWrite(11, right.DP);
     vTaskDelay(pdMS_TO_TICKS(17));
     digitalWrite(46, HIGH);
 
@@ -907,6 +961,7 @@ void DP_TASK(void *pvParameters) // This is a task.
           Serial.print(left.E);
           Serial.print(left.F);
           Serial.println(left.G);
+          Serial.println(left.DP);
 
           Serial.print(F("DP_TASK: Received from  RQ - "));
           Serial.print(right.A);
@@ -916,6 +971,7 @@ void DP_TASK(void *pvParameters) // This is a task.
           Serial.print(right.E);
           Serial.print(right.F);
           Serial.println(right.G);
+          Serial.println(right.DP);
 #endif
         }
         else
