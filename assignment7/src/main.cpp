@@ -70,10 +70,8 @@ void setup()
       Serial.println(F("DRQ: Creation Error, not enough heap mem!"));
   }
 
- 
- BaseType_t xDS_RTVAL = xTaskCreate(
-      DS_TASK, "DS_TASK"
-      ,
+  BaseType_t xDS_RTVAL = xTaskCreate(
+      DS_TASK, "DS_TASK",
       256 // Stack size
       ,
       NULL // parameters
@@ -89,8 +87,7 @@ void setup()
   }
 
   BaseType_t xSM_RTVAL = xTaskCreate(
-      SM_TASK, "SM_TASK"
-      ,
+      SM_TASK, "SM_TASK",
       256 // Stack size
       ,
       NULL // parameters
@@ -106,8 +103,7 @@ void setup()
   }
 
   BaseType_t xHT_RTVAL = xTaskCreate(
-      HT_TASK, "HT_TASK"
-      ,
+      HT_TASK, "HT_TASK",
       256 // Stack size
       ,
       NULL // parameters
@@ -164,8 +160,44 @@ void setup()
 
 void DS_TASK(void *pvParameters) // This is a task.
 {
+// Give our pins human names
+#define DIP0 53
+#define DIP1 51
+#define DIP2 49
+#define DIP3 47
+#define DIP4 45
+#define DIP5 43
+#define DIP6 41
+#define DIP7 39
+
+  // make pins input
+  pinMode(DIP0, INPUT);
+  pinMode(DIP1, INPUT);
+  pinMode(DIP2, INPUT);
+  pinMode(DIP3, INPUT);
+  pinMode(DIP4, INPUT);
+  pinMode(DIP5, INPUT);
+  pinMode(DIP6, INPUT);
+  pinMode(DIP7, INPUT);
+
   for (;;)
   {
+#if DEBUG_FLAG
+    // Note: Our DIP switch shows value 1 for off, value 0 for on
+    Serial.print(F("DIP Switch Reading: "));
+    byte DIPSW = (digitalRead(DIP7) << 7) | (digitalRead(DIP6) << 6) | (digitalRead(DIP5) << 5) | (digitalRead(DIP4) << 4) | (digitalRead(DIP3) << 3) | (digitalRead(DIP2) << 2) | (digitalRead(DIP1) << 1) | (digitalRead(DIP0));
+    Serial.print(DIPSW);
+    Serial.print(" : ");
+    Serial.print(digitalRead(DIP7));
+    Serial.print(digitalRead(DIP6));
+    Serial.print(digitalRead(DIP5));
+    Serial.print(digitalRead(DIP4));
+    Serial.print(digitalRead(DIP3));
+    Serial.print(digitalRead(DIP2));
+    Serial.print(digitalRead(DIP1));
+    Serial.println(digitalRead(DIP0));
+    vTaskDelay(pdMS_TO_TICKS(500));
+#endif
   }
 }
 
