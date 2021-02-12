@@ -2,6 +2,7 @@
 #include <Arduino_FreeRTOS.h>
 #include <semphr.h>
 #include <queue.h>
+#include <Stepper.h>
 #define DEBUG_FLAG 1
 
 // Define the tasks
@@ -17,7 +18,7 @@ void loop();
 SemaphoreHandle_t DP_SEMAPHORE;
 
 // Define the Queues
-QueueHandle_t LQ, RQ, DRQ; // Left Queue, Right Queue, Driver Queue
+QueueHandle_t LQ, RQ, DRQ, HTQ, SMQ, DSQ; // Left Queue, Right Queue, Driver Queue, Humi/Temp Queue, Stepper Motor Queue, Dip Switch Queue
 
 // the setup function runs once when you press reset or power the board
 void setup()
@@ -33,7 +34,7 @@ void setup()
       Serial.println(F("DP_SEMAPHORE: Creation Error, not enough heap mem!"));
   }
 
-  // Define the structs
+  // Define the display struct
   struct display
   {
     bool A;
@@ -49,6 +50,20 @@ void setup()
   // Define char array for display
   char display_arr[3];
 
+  // Define the stepper motor struct
+  struct stepper_motor
+  {
+    bool forward;
+    byte RPM;
+  };
+
+  // Define the humi/temp struct
+  struct humi_temp
+  {
+    byte humidity;
+    byte temperature;
+  };
+
   LQ = xQueueCreate(1, sizeof(struct display));
   if (LQ == NULL)
   {
@@ -63,11 +78,32 @@ void setup()
       Serial.println(F("RQ: Creation Error, not enough heap mem!"));
   }
 
-  DRQ = xQueueCreate(1, sizeof(display_arr));
+  DRQ = xQueueCreate(5, sizeof(display_arr));
   if (DRQ == NULL)
   {
     for (;;)
       Serial.println(F("DRQ: Creation Error, not enough heap mem!"));
+  }
+
+  HTQ = xQueueCreate(5, sizeof(struct humi_temp));
+  if (HTQ == NULL)
+  {
+    for (;;)
+      Serial.println(F("HTQ: Creation Error, not enough heap mem!"));
+  }
+
+  SMQ = xQueueCreate(5, sizeof(struct stepper_motor));
+  if (SMQ == NULL)
+  {
+    for (;;)
+      Serial.println(F("SMQ: Creation Error, not enough heap mem!"));
+  }
+
+  DSQ = xQueueCreate(5, sizeof(byte));
+  if (DSQ == NULL)
+  {
+    for (;;)
+      Serial.println(F("DSQ: Creation Error, not enough heap mem!"));
   }
 
   BaseType_t xDS_RTVAL = xTaskCreate(
@@ -182,10 +218,12 @@ void DS_TASK(void *pvParameters) // This is a task.
 
   for (;;)
   {
+    // Lets read the DIP Switch into a byte. bits are read from right to left, 7-0
+    byte DIPSW = (digitalRead(DIP7) << 7) | (digitalRead(DIP6) << 6) | (digitalRead(DIP5) << 5) | (digitalRead(DIP4) << 4) | (digitalRead(DIP3) << 3) | (digitalRead(DIP2) << 2) | (digitalRead(DIP1) << 1) | (digitalRead(DIP0));
+
 #if DEBUG_FLAG
     // Note: Our DIP switch shows value 1 for off, value 0 for on
-    Serial.print(F("DIP Switch Reading: "));
-    byte DIPSW = (digitalRead(DIP7) << 7) | (digitalRead(DIP6) << 6) | (digitalRead(DIP5) << 5) | (digitalRead(DIP4) << 4) | (digitalRead(DIP3) << 3) | (digitalRead(DIP2) << 2) | (digitalRead(DIP1) << 1) | (digitalRead(DIP0));
+    Serial.print(F("DS_TASK: DIP Switch Reading: "));
     Serial.print(DIPSW);
     Serial.print(" : ");
     Serial.print(digitalRead(DIP7));
@@ -196,16 +234,154 @@ void DS_TASK(void *pvParameters) // This is a task.
     Serial.print(digitalRead(DIP2));
     Serial.print(digitalRead(DIP1));
     Serial.println(digitalRead(DIP0));
-    vTaskDelay(pdMS_TO_TICKS(500));
 #endif
+
+    // Send read value to DSQ
+    if (DSQ != NULL)
+    {
+      if (xQueueSendToBack(DSQ, &DIPSW, (TickType_t)0) == pdTRUE)
+      {
+#if DEBUG_FLAG
+        Serial.print(F("DS_TASK: Success sent value to DSQ! - "));
+        Serial.println(DIPSW);
+#endif
+
+        // We sent our value, delay for next reading
+        vTaskDelay(pdMS_TO_TICKS(150));
+      }
+
+      else
+      {
+#if DEBUG_FLAG
+        Serial.print(F("DS_TASK: Failure sending value to DSQ! DSQ FULL! - "));
+        Serial.println(DIPSW);
+#endif
+
+        // We didn't send our value, delay for next reading
+        vTaskDelay(pdMS_TO_TICKS(150));
+      }
+    }
+    else
+      // DSQ failure, yield
+      taskYIELD();
   }
 }
 
 void SM_TASK(void *pvParameters) // This is a task.
 {
+  // Give our pins human names
+#define IN1 30
+#define IN2 32
+#define IN3 34
+#define IN4 36
+
+  // make pins input
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+  // Create our FSM
+  enum state_machine
+  {
+    start,
+    step1,   // full step 1
+    step1_5, // half step 1
+    step2,   // full step 3
+    step2_5, // half step 2
+    step3,   // full step 3
+    step3_5, // half step 3
+    step4,   // full step 4
+    step4_5  // half step 4
+  };
+  state_machine fsm;
+  fsm = start;
+
+  // booleans for stepper motor
+  bool forward = true; // forward is true, false is reverse
 
   for (;;)
   {
+
+    switch (fsm)
+    {
+
+    case start:
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, LOW);
+      digitalWrite(IN3, LOW);
+      digitalWrite(IN4, LOW);
+      break;
+
+    case step1:
+      digitalWrite(IN1, HIGH);
+      digitalWrite(IN2, LOW);
+      digitalWrite(IN3, LOW);
+      digitalWrite(IN4, LOW);
+      break;
+
+    case step1_5:
+      digitalWrite(IN1, HIGH);
+      digitalWrite(IN2, HIGH);
+      digitalWrite(IN3, LOW);
+      digitalWrite(IN4, LOW);
+      break;
+
+    case step2:
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, HIGH);
+      digitalWrite(IN3, LOW);
+      digitalWrite(IN4, LOW);
+      break;
+
+    case step2_5:
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, HIGH);
+      digitalWrite(IN3, HIGH);
+      digitalWrite(IN4, LOW);
+      break;
+
+    case step3:
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, LOW);
+      digitalWrite(IN3, HIGH);
+      digitalWrite(IN4, LOW);
+      break;
+
+    case step3_5:
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, LOW);
+      digitalWrite(IN3, HIGH);
+      digitalWrite(IN4, HIGH);
+      break;
+
+    case step4:
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, LOW);
+      digitalWrite(IN3, LOW);
+      digitalWrite(IN4, HIGH);
+      break;
+
+    case step4_5:
+      digitalWrite(IN1, HIGH);
+      digitalWrite(IN2, LOW);
+      digitalWrite(IN3, LOW);
+      digitalWrite(IN4, HIGH);
+      break;
+
+    default:
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, LOW);
+      digitalWrite(IN3, LOW);
+      digitalWrite(IN4, LOW);
+    }
+
+    if (fsm >= step4_5)
+      fsm = step1;
+    else
+      fsm = fsm + 1;
+
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 
@@ -241,7 +417,7 @@ void DR_TASK(void *pvParameters) // This is a task.
   {
     if (DRQ != NULL)
     {
-      if (xQueueReceive(DRQ, &display_arr, (TickType_t)10) == pdPASS)
+      if (xQueueReceive(DRQ, &display_arr, (TickType_t)0) == pdPASS)
       {
 #if DEBUG_FLAG
         Serial.print(F("DR_TASK: Received number from DRQ - "));
@@ -821,8 +997,8 @@ void DR_TASK(void *pvParameters) // This is a task.
         if (LQ != NULL && RQ != NULL)
         {
           // load both queues up
-          xQueueSend(LQ, &left, (TickType_t)10);
-          xQueueSend(RQ, &right, (TickType_t)10);
+          xQueueSend(LQ, &left, (TickType_t)0);
+          xQueueSend(RQ, &right, (TickType_t)0);
 
 // Now we give DP_SEMAPHORE
 #if DEBUG_FLAG
@@ -946,7 +1122,7 @@ void DP_TASK(void *pvParameters) // This is a task.
       if (LQ != NULL && RQ != NULL)
       {
         // Check and grab data from both left and right queues
-        if ((xQueueReceive(LQ, &left, (TickType_t)10) == pdPASS) && (xQueueReceive(RQ, &right, (TickType_t)10) == pdPASS))
+        if ((xQueueReceive(LQ, &left, (TickType_t)0) == pdPASS) && (xQueueReceive(RQ, &right, (TickType_t)0) == pdPASS))
         {
 #if DEBUG_FLAG
           Serial.print(F("DP_TASK: Received from  LQ - "));
