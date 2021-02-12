@@ -6,11 +6,12 @@
 #define DEBUG_FLAG 1
 
 // Define the tasks
-void DS_TASK(void *pvParameters); // DIP Switch Task
-void SM_TASK(void *pvParameters); // Stepper Motor Task
-void HT_TASK(void *pvParameters); // Humidity Temperature Task
-void DR_TASK(void *pvParameters); // Display Driver Task
-void DP_TASK(void *pvParameters); // Display Task
+void DS_TASK(void *pvParameters);   // DIP Switch Task
+void SM_TASK(void *pvParameters);   // Stepper Motor Task
+void HT_TASK(void *pvParameters);   // Humidity Temperature Task
+void DR_TASK(void *pvParameters);   // Display Driver Task
+void DP_TASK(void *pvParameters);   // Display Task
+void CONT_TASK(void *pvParameters); // Controller Task
 void setup();
 void loop();
 
@@ -107,12 +108,12 @@ void setup()
   }
 
   BaseType_t xDS_RTVAL = xTaskCreate(
-      DS_TASK, "DS_TASK",
+      DS_TASK, "DS_TASK", // The DIP Switch Task
       256 // Stack size
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY // priority
+      tskIDLE_PRIORITY + 1 // priority
       ,
       NULL);
 
@@ -161,7 +162,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY + 1 // priority
+      tskIDLE_PRIORITY  // priority
       ,
       NULL);
 
@@ -178,7 +179,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY + 1 // priority
+      tskIDLE_PRIORITY // priority
       ,
       NULL);
 
@@ -186,6 +187,23 @@ void setup()
   {
     for (;;)
       Serial.println(F("DP_TASK: Creation Error, not enough heap or stack!"));
+  }
+
+  BaseType_t xCONT_RTVAL = xTaskCreate(
+      CONT_TASK, "CONT_TASK" // The Controller Task
+      ,
+      256 // Stack size
+      ,
+      NULL // parameters
+      ,
+      tskIDLE_PRIORITY + 2 // priority
+      ,
+      NULL);
+
+  if (xCONT_RTVAL != pdPASS)
+  {
+    for (;;)
+      Serial.println(F("CONT_TASK: Creation Error, not enough heap or stack!"));
   }
 
 // Now the task scheduler, which takes over control of scheduling individual tasks, is automatically started.
@@ -247,7 +265,7 @@ void DS_TASK(void *pvParameters) // This is a task.
 #endif
 
         // We sent our value, delay for next reading
-        vTaskDelay(pdMS_TO_TICKS(150));
+        vTaskDelay(pdMS_TO_TICKS(250));
       }
 
       else
@@ -258,7 +276,7 @@ void DS_TASK(void *pvParameters) // This is a task.
 #endif
 
         // We didn't send our value, delay for next reading
-        vTaskDelay(pdMS_TO_TICKS(150));
+        vTaskDelay(pdMS_TO_TICKS(250));
       }
     }
     else
@@ -281,112 +299,27 @@ void SM_TASK(void *pvParameters) // This is a task.
   pinMode(IN3, OUTPUT);
   pinMode(IN4, OUTPUT);
 
-  // Create our FSM
-  enum state_machine
+  // Define the stepper motor struct
+  struct stepper_motor
   {
-    start,
-    step1,   // full step 1
-    step1_5, // half step 1
-    step2,   // full step 3
-    step2_5, // half step 2
-    step3,   // full step 3
-    step3_5, // half step 3
-    step4,   // full step 4
-    step4_5  // half step 4
+    bool forward;
+    byte RPM;
   };
-  state_machine fsm;
-  fsm = start;
-
-  // booleans for stepper motor
-  bool forward = true; // forward is true, false is reverse
 
   for (;;)
   {
-
-    switch (fsm)
-    {
-
-    case start:
-      digitalWrite(IN1, LOW);
-      digitalWrite(IN2, LOW);
-      digitalWrite(IN3, LOW);
-      digitalWrite(IN4, LOW);
-      break;
-
-    case step1:
-      digitalWrite(IN1, HIGH);
-      digitalWrite(IN2, LOW);
-      digitalWrite(IN3, LOW);
-      digitalWrite(IN4, LOW);
-      break;
-
-    case step1_5:
-      digitalWrite(IN1, HIGH);
-      digitalWrite(IN2, HIGH);
-      digitalWrite(IN3, LOW);
-      digitalWrite(IN4, LOW);
-      break;
-
-    case step2:
-      digitalWrite(IN1, LOW);
-      digitalWrite(IN2, HIGH);
-      digitalWrite(IN3, LOW);
-      digitalWrite(IN4, LOW);
-      break;
-
-    case step2_5:
-      digitalWrite(IN1, LOW);
-      digitalWrite(IN2, HIGH);
-      digitalWrite(IN3, HIGH);
-      digitalWrite(IN4, LOW);
-      break;
-
-    case step3:
-      digitalWrite(IN1, LOW);
-      digitalWrite(IN2, LOW);
-      digitalWrite(IN3, HIGH);
-      digitalWrite(IN4, LOW);
-      break;
-
-    case step3_5:
-      digitalWrite(IN1, LOW);
-      digitalWrite(IN2, LOW);
-      digitalWrite(IN3, HIGH);
-      digitalWrite(IN4, HIGH);
-      break;
-
-    case step4:
-      digitalWrite(IN1, LOW);
-      digitalWrite(IN2, LOW);
-      digitalWrite(IN3, LOW);
-      digitalWrite(IN4, HIGH);
-      break;
-
-    case step4_5:
-      digitalWrite(IN1, HIGH);
-      digitalWrite(IN2, LOW);
-      digitalWrite(IN3, LOW);
-      digitalWrite(IN4, HIGH);
-      break;
-
-    default:
-      digitalWrite(IN1, LOW);
-      digitalWrite(IN2, LOW);
-      digitalWrite(IN3, LOW);
-      digitalWrite(IN4, LOW);
-    }
-
-    if (fsm >= step4_5)
-      fsm = step1;
-    else
-      fsm = fsm + 1;
-
-    vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 
 void HT_TASK(void *pvParameters) // This is a task.
 {
+  // Define the humi/temp struct
+  struct humi_temp
+  {
+    byte humidity;
+    byte temperature;
+  };
+
   for (;;)
   {
   }
@@ -1160,6 +1093,53 @@ void DP_TASK(void *pvParameters) // This is a task.
   }
 }
 
+void CONT_TASK(void *pvParameters)
+{
+  // Define char array for display
+  char display_arr[3];
+
+  // Define the stepper motor struct
+  struct stepper_motor
+  {
+    bool forward;
+    byte RPM;
+  };
+
+  // Define the humi/temp struct
+  struct humi_temp
+  {
+    byte humidity;
+    byte temperature;
+  };
+
+  // Define the byte to hol DIP Switch values
+  byte DIPSW;
+
+  for (;;)
+  {
+    // Check the DSQ
+    if (DSQ != NULL)
+    {
+      // Read from the DSQ
+      if (xQueueReceive(DSQ, &DIPSW, (TickType_t)0) == pdTRUE)
+      {
+#if DEBUG_FLAG
+        Serial.print(F("CONT_TASK: Success read from DSQ - "));
+        Serial.println(DIPSW);
+#endif
+      }
+      else
+      {
+#if DEBUG_FLAG
+        Serial.println(F("CONT_TASK: Failure reading from DSQ! DSQ Empty!"));
+#endif
+      }
+    }
+
+    // Delay for other tasks
+    vTaskDelay(pdMS_TO_TICKS(500));
+  }
+}
 void loop()
 {
   // Empty. Things are done in Tasks.
