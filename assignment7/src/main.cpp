@@ -3,7 +3,8 @@
 #include <semphr.h>
 #include <queue.h>
 #include <Stepper.h>
-#define DEBUG_FLAG 1
+#include <ClosedCube_HDC1080.h>
+#define DEBUG_FLAG 0
 
 // Define the tasks
 void DS_TASK(void *pvParameters);   // DIP Switch Task
@@ -61,8 +62,8 @@ void setup()
   // Define the humi/temp struct
   struct humi_temp
   {
-    byte humidity;
-    byte temperature;
+    double humidity;
+    double temperature;
   };
 
   LQ = xQueueCreate(1, sizeof(struct display));
@@ -352,12 +353,27 @@ void HT_TASK(void *pvParameters) // This is a task.
   // Define the humi/temp struct
   struct humi_temp
   {
-    byte humidity;
-    byte temperature;
+    double humidity;
+    double temperature;
   };
 
+  // Create an object our sensor
+  ClosedCube_HDC1080 hdc1080;
+
+  // Start up the sensor at i2c address
+  hdc1080.begin(0x40);
+  // Set sensor resolution, humidity, temp
+  hdc1080.setResolution(HDC1080_RESOLUTION_14BIT, HDC1080_RESOLUTION_14BIT);
+
   for (;;)
-  {
+  { 
+  
+	Serial.print("T=");
+	Serial.print(hdc1080.readTemperature());
+	Serial.print("C, RH=");
+	Serial.print(hdc1080.readHumidity());
+	Serial.println("%");
+  vTaskDelay(pdMS_TO_TICKS(250));
   }
 }
 
@@ -1149,8 +1165,8 @@ void CONT_TASK(void *pvParameters)
   // Define the humi/temp struct
   struct humi_temp
   {
-    byte humidity;
-    byte temperature;
+    double humidity;
+    double temperature;
   };
 
   // init ht to some default values
