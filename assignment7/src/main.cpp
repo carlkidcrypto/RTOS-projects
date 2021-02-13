@@ -287,11 +287,14 @@ void DS_TASK(void *pvParameters) // This is a task.
 
 void SM_TASK(void *pvParameters) // This is a task.
 {
-  // Give our pins human names
+// Give our pins human names
 #define IN1 30
 #define IN2 32
 #define IN3 34
 #define IN4 36
+
+// Define the max steps per rotation. See data sheet
+#define MAXSTEPS 2048
 
   // make pins input
   pinMode(IN1, OUTPUT);
@@ -306,8 +309,41 @@ void SM_TASK(void *pvParameters) // This is a task.
     byte RPM;
   };
 
+  // init sm to default values
+  stepper_motor sm;
+  sm.forward = true;
+  sm.RPM = 15;
+
+  // Create a stepper motor object
+  Stepper my_motor = Stepper(MAXSTEPS, IN1, IN3, IN2, IN4);
+  //my_motor.setSpeed(sm.RPM);
+  //my_motor.step(MAXSTEPS); // pos is forward, neg is reverse
+
   for (;;)
   {
+    // Check the SMQ
+    if(SMQ != NULL)
+    {
+      if (xQueueReceive(SMQ, &sm, (TickType_t)0) == pdTRUE)
+      {
+#if DEBUG_FLAG
+        Serial.print(F("SM_TASK: Success read from SMQ - "));
+        Serial.print(sm.forward);
+        Serial.println(sm.RPM);
+#endif
+
+        // We read our value, delay for next value
+        vTaskDelay(pdMS_TO_TICKS(250));
+      }
+      else
+      {
+#if DEBUG_FLAG
+        Serial.println(F("SM_TASK: Failure reading from SMQ! SMQ Empty!"));
+#endif
+        // We didn't read our value, delay for next value
+        vTaskDelay(pdMS_TO_TICKS(250));
+      }
+    }
   }
 }
 
@@ -1105,6 +1141,11 @@ void CONT_TASK(void *pvParameters)
     byte RPM;
   };
 
+  // init sm to some default values
+  stepper_motor sm;
+  sm.forward = true;
+  sm.RPM = 15;
+
   // Define the humi/temp struct
   struct humi_temp
   {
@@ -1112,13 +1153,18 @@ void CONT_TASK(void *pvParameters)
     byte temperature;
   };
 
+  // init ht to some default values
+  humi_temp ht;
+  ht.humidity = 0;
+  ht.temperature = 0;
+
   // Define the byte to hol DIP Switch values
-  byte DIPSW;
+  byte DIPSW = 255;
 
   for (;;)
   {
-    // Check the DSQ
-    if (DSQ != NULL)
+    // Check all the queues and make sure they are valid
+    if ((DSQ != NULL) && (SMQ != NULL) && (DRQ != NULL) && (HTQ !=NULL))
     {
       // Read from the DSQ
       if (xQueueReceive(DSQ, &DIPSW, (TickType_t)0) == pdTRUE)
@@ -1134,6 +1180,27 @@ void CONT_TASK(void *pvParameters)
         Serial.println(F("CONT_TASK: Failure reading from DSQ! DSQ Empty!"));
 #endif
       }
+
+      // Read from HTQ
+      if (xQueueReceive(HTQ, &ht, (TickType_t)0) == pdTRUE)
+      {
+#if DEBUG_FLAG
+        Serial.print(F("CONT_TASK: Success read from HTQ - "));
+        Serial.print(ht.humidity);
+        Serial.println(ht.temperature);
+#endif
+      }
+      else
+      {
+#if DEBUG_FLAG
+        Serial.println(F("CONT_TASK: Failure reading from HTQ! HTQ Empty!"));
+#endif
+      }
+
+      // Calculate values to send to DRQ and SMQ
+
+      
+
     }
 
     // Delay for other tasks
