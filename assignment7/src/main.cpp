@@ -1285,9 +1285,30 @@ void CONT_TASK(void *pvParameters)
         else
           sm.RPM = 15;
 
+        // Send to SMQ
+        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
+        else
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Failure sending to SMQ! It's full! - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
+
         break;
 
       case DPSW1_OFF:
+        // Move stepper on humidity / Off on Temperature
         // NOTE: Max RPM is 15 since we are only running on 5 V
         // also note temp is in degrees Celcius
         if (ht.temperature >= 0.00 && ht.temperature <= 25.00)
@@ -1309,12 +1330,52 @@ void CONT_TASK(void *pvParameters)
       case DPSW2:
         // Overrides 1 and just continuously moves stepper clockwise
         sm.forward = true;
+        sm.RPM = 15;
+        // Send to SMQ
+        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
+        else
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Failure sending to SMQ! It's full! - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
 
         break;
 
       case DPSW3:
         // Override's 1 and just continuously moves stepper counterclockwise
         sm.forward = false;
+        sm.RPM = 15;
+        // Send to SMQ
+        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
+        else
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Failure sending to SMQ! It's full! - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
 
         break;
 
@@ -1322,13 +1383,61 @@ void CONT_TASK(void *pvParameters)
         // stops everything and overrides DP1, DP2 and DP3
         sm.RPM = 0;
         sm.forward = true;
+
+        // Send to SMQ
+        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
+        else
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Failure sending to SMQ! It's full! - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
+
         break;
 
       case DPSW2and3:
         // then do one revolution clockwise and one counterclockwise and repeat
+
+        // do one revolution at max speed
+        sm.RPM = 15;
+        sm.forward = true;
+
+        // send to SMQ and delay a bit. Wait for completion.
+        // send to SMQ
         break;
 
       default:
+        // invalid inputs don't change state
+        // Send to SMQ
+        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
+        else
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Failure sending to SMQ! It's full! - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
         break;
       }
     }
