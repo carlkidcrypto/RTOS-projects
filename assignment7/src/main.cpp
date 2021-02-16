@@ -1212,11 +1212,12 @@ void CONT_TASK(void *pvParameters)
   enum states
   {
     OVERLOAD = 0,
-    DPSW2and3 = 249,
     DPSW4 = 247,
+    DPSW2and3 = 249,
     DPSW3 = 251,
     DPSW2 = 253,
-    DPSW1 = 254
+    DPSW1_ON = 254,
+    DPSW1_OFF = 255
   };
 
   // Create the FSM
@@ -1260,48 +1261,49 @@ void CONT_TASK(void *pvParameters)
 #endif
       }
 
-      // Calculate values to send to DRQ and SMQ
-      // NOTE: Max RPM is 15 since we are only running on 5 V
-      if(ht.humidity >= 0.00 && ht.humidity <= 25.00)
-        sm.RPM =  3;
-
-      else if(ht.humidity >= 25.01 && ht.humidity <= 50.00)
-        sm.RPM =  6;
-
-      else if(ht.humidity >= 50.01 && ht.humidity <= 75.00)
-        sm.RPM =  9;
-
-      else if(ht.humidity >= 75.01 && ht.humidity <= 100.00)
-        sm.RPM =  12;
-
-      else
-        sm.RPM =  15;
-
-      // also note temp is in degrees Celcius
-      if(ht.temperature >= 0.00 && ht.temperature <=25.00)
-        sm.RPM =  3;
-
-      else if(ht.temperature >= 25.01 && ht.temperature <=50.00)
-        sm.RPM =  6;
-
-      else if(ht.temperature >= 50.01 && ht.temperature <=75.00)
-        sm.RPM =  9;
-
-      else if(ht.temperature >= 75.01 && ht.temperature <=100.00)
-        sm.RPM =  12;
-
-      else
-        sm.RPM =  15;
-
+      // check the FSM value and do stuff.
       switch (FSM)
       {
       case OVERLOAD:
         break;
 
-      case DPSW1:
+      case DPSW1_ON:
         // Move stepper on humidity / Off on Temperature
         sm.forward = true;
+        if (ht.humidity >= 0.00 && ht.humidity <= 25.00)
+          sm.RPM = 3;
 
+        else if (ht.humidity >= 25.01 && ht.humidity <= 50.00)
+          sm.RPM = 6;
+
+        else if (ht.humidity >= 50.01 && ht.humidity <= 75.00)
+          sm.RPM = 9;
+
+        else if (ht.humidity >= 75.01 && ht.humidity <= 100.00)
+          sm.RPM = 12;
+
+        else
+          sm.RPM = 15;
+
+        break;
+
+      case DPSW1_OFF:
+        // NOTE: Max RPM is 15 since we are only running on 5 V
+        // also note temp is in degrees Celcius
+        if (ht.temperature >= 0.00 && ht.temperature <= 25.00)
+          sm.RPM = 3;
+
+        else if (ht.temperature >= 25.01 && ht.temperature <= 50.00)
+          sm.RPM = 6;
+
+        else if (ht.temperature >= 50.01 && ht.temperature <= 75.00)
+          sm.RPM = 9;
+
+        else if (ht.temperature >= 75.01 && ht.temperature <= 100.00)
+          sm.RPM = 12;
+
+        else
+          sm.RPM = 15;
         break;
 
       case DPSW2:
@@ -1321,7 +1323,7 @@ void CONT_TASK(void *pvParameters)
         sm.RPM = 0;
         sm.forward = true;
         break;
-      
+
       case DPSW2and3:
         // then do one revolution clockwise and one counterclockwise and repeat
         break;
