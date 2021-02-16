@@ -4,7 +4,7 @@
 #include <queue.h>
 #include <Stepper.h>
 #include <ClosedCube_HDC1080.h>
-#define DEBUG_FLAG 0
+#define DEBUG_FLAG 1
 
 // Define the tasks
 void DS_TASK(void *pvParameters);   // DIP Switch Task
@@ -87,21 +87,21 @@ void setup()
       Serial.println(F("DRQ: Creation Error, not enough heap mem!"));
   }
 
-  HTQ = xQueueCreate(5, sizeof(struct humi_temp));
+  HTQ = xQueueCreate(1, sizeof(struct humi_temp));
   if (HTQ == NULL)
   {
     for (;;)
       Serial.println(F("HTQ: Creation Error, not enough heap mem!"));
   }
 
-  SMQ = xQueueCreate(5, sizeof(struct stepper_motor));
+  SMQ = xQueueCreate(1, sizeof(struct stepper_motor));
   if (SMQ == NULL)
   {
     for (;;)
       Serial.println(F("SMQ: Creation Error, not enough heap mem!"));
   }
 
-  DSQ = xQueueCreate(5, sizeof(byte));
+  DSQ = xQueueCreate(1, sizeof(byte));
   if (DSQ == NULL)
   {
     for (;;)
@@ -110,7 +110,7 @@ void setup()
 
   BaseType_t xDS_RTVAL = xTaskCreate(
       DS_TASK, "DS_TASK", // The DIP Switch Task
-      256 // Stack size
+      256                 // Stack size
       ,
       NULL // parameters
       ,
@@ -163,7 +163,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY  // priority
+      tskIDLE_PRIORITY // priority
       ,
       NULL);
 
@@ -323,7 +323,7 @@ void SM_TASK(void *pvParameters) // This is a task.
   for (;;)
   {
     // Check the SMQ
-    if(SMQ != NULL)
+    if (SMQ != NULL)
     {
       if (xQueueReceive(SMQ, &sm, (TickType_t)0) == pdTRUE)
       {
@@ -357,6 +357,8 @@ void HT_TASK(void *pvParameters) // This is a task.
     double temperature;
   };
 
+  humi_temp HT_READINGS;
+
   // Create an object our sensor
   ClosedCube_HDC1080 hdc1080;
 
@@ -366,14 +368,43 @@ void HT_TASK(void *pvParameters) // This is a task.
   hdc1080.setResolution(HDC1080_RESOLUTION_14BIT, HDC1080_RESOLUTION_14BIT);
 
   for (;;)
-  { 
-  
-	Serial.print("T=");
-	Serial.print(hdc1080.readTemperature());
-	Serial.print("C, RH=");
-	Serial.print(hdc1080.readHumidity());
-	Serial.println("%");
-  vTaskDelay(pdMS_TO_TICKS(250));
+  {
+    // get the humi/temp values
+    HT_READINGS.temperature = hdc1080.readTemperature();
+    HT_READINGS.humidity = hdc1080.readHumidity();
+
+    // Send read value to HTQ
+    if (HTQ != NULL)
+    {
+      if (xQueueSendToBack(HTQ, &HT_READINGS, (TickType_t)0) == pdTRUE)
+      {
+#if DEBUG_FLAG
+        Serial.print(F("HT_TASK: Success sent value to HTQ! - "));
+        Serial.print(HT_READINGS.humidity);
+        Serial.print(" - ");
+        Serial.println(HT_READINGS.temperature);
+#endif
+
+        // We sent our value, delay for next reading
+        vTaskDelay(pdMS_TO_TICKS(250));
+      }
+
+      else
+      {
+#if DEBUG_FLAG
+        Serial.print(F("HT_TASK: Failure sending value to HTQ! HTQ FULL! - "));
+        Serial.print(HT_READINGS.humidity);
+        Serial.print(" - ");
+        Serial.println(HT_READINGS.temperature);
+#endif
+
+        // We didn't send our value, delay for next reading
+        vTaskDelay(pdMS_TO_TICKS(250));
+      }
+    }
+    else
+      // DSQ failure, yield
+      taskYIELD();
   }
 }
 
@@ -1174,13 +1205,25 @@ void CONT_TASK(void *pvParameters)
   ht.humidity = 0;
   ht.temperature = 0;
 
-  // Define the byte to hol DIP Switch values
+  // Define the byte to hold DIP Switch values
   byte DIPSW = 255;
+
+  // Map valid DIP Switch inputs
+  enum states
+  {
+    start = 0,
+    DPSW4 = 247,
+    DPSW3 = 251,
+    DPSW2 = 253,
+    DPSW1 = 254
+  };
+  // Create the FSM
+  states FSM;
 
   for (;;)
   {
     // Check all the queues and make sure they are valid
-    if ((DSQ != NULL) && (SMQ != NULL) && (DRQ != NULL) && (HTQ !=NULL))
+    if ((DSQ != NULL) && (SMQ != NULL) && (DRQ != NULL) && (HTQ != NULL))
     {
       // Read from the DSQ
       if (xQueueReceive(DSQ, &DIPSW, (TickType_t)0) == pdTRUE)
@@ -1215,8 +1258,26 @@ void CONT_TASK(void *pvParameters)
 
       // Calculate values to send to DRQ and SMQ
 
-      
+      switch (FSM)
+      {
+      case start:
+        break;
 
+      case DPSW1:
+        break;
+
+      case DPSW2:
+        break;
+
+      case DPSW3:
+        break;
+
+      case DPSW4:
+        break;
+
+      default:
+        break;
+      }
     }
 
     // Delay for other tasks
