@@ -1211,14 +1211,18 @@ void CONT_TASK(void *pvParameters)
   // Map valid DIP Switch inputs
   enum states
   {
-    start = 0,
+    OVERLOAD = 0,
+    DPSW2and3 = 249,
     DPSW4 = 247,
     DPSW3 = 251,
     DPSW2 = 253,
     DPSW1 = 254
   };
+
   // Create the FSM
   states FSM;
+  // init FSM
+  FSM = states(DIPSW);
 
   for (;;)
   {
@@ -1257,22 +1261,69 @@ void CONT_TASK(void *pvParameters)
       }
 
       // Calculate values to send to DRQ and SMQ
+      // NOTE: Max RPM is 15 since we are only running on 5 V
+      if(ht.humidity >= 0.00 && ht.humidity <= 25.00)
+        sm.RPM =  3;
+
+      else if(ht.humidity >= 25.01 && ht.humidity <= 50.00)
+        sm.RPM =  6;
+
+      else if(ht.humidity >= 50.01 && ht.humidity <= 75.00)
+        sm.RPM =  9;
+
+      else if(ht.humidity >= 75.01 && ht.humidity <= 100.00)
+        sm.RPM =  12;
+
+      else
+        sm.RPM =  15;
+
+      // also note temp is in degrees Celcius
+      if(ht.temperature >= 0.00 && ht.temperature <=25.00)
+        sm.RPM =  3;
+
+      else if(ht.temperature >= 25.01 && ht.temperature <=50.00)
+        sm.RPM =  6;
+
+      else if(ht.temperature >= 50.01 && ht.temperature <=75.00)
+        sm.RPM =  9;
+
+      else if(ht.temperature >= 75.01 && ht.temperature <=100.00)
+        sm.RPM =  12;
+
+      else
+        sm.RPM =  15;
 
       switch (FSM)
       {
-      case start:
+      case OVERLOAD:
         break;
 
       case DPSW1:
+        // Move stepper on humidity / Off on Temperature
+        sm.forward = true;
+
         break;
 
       case DPSW2:
+        // Overrides 1 and just continuously moves stepper clockwise
+        sm.forward = true;
+
         break;
 
       case DPSW3:
+        // Override's 1 and just continuously moves stepper counterclockwise
+        sm.forward = false;
+
         break;
 
       case DPSW4:
+        // stops everything and overrides DP1, DP2 and DP3
+        sm.RPM = 0;
+        sm.forward = true;
+        break;
+      
+      case DPSW2and3:
+        // then do one revolution clockwise and one counterclockwise and repeat
         break;
 
       default:
