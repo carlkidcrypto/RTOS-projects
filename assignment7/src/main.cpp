@@ -114,7 +114,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY + 1 // priority
+      tskIDLE_PRIORITY + 2 // priority
       ,
       NULL);
 
@@ -130,7 +130,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY // priority
+      tskIDLE_PRIORITY + 2 // priority
       ,
       NULL);
 
@@ -146,7 +146,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY // priority
+      tskIDLE_PRIORITY + 2 // priority
       ,
       NULL);
 
@@ -163,7 +163,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY // priority
+      tskIDLE_PRIORITY + 1 // priority
       ,
       NULL);
 
@@ -180,7 +180,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY // priority
+      tskIDLE_PRIORITY + 1 // priority
       ,
       NULL);
 
@@ -197,7 +197,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY + 2 // priority
+      tskIDLE_PRIORITY + 3 // priority
       ,
       NULL);
 
@@ -330,11 +330,17 @@ void SM_TASK(void *pvParameters) // This is a task.
 #if DEBUG_FLAG
         Serial.print(F("SM_TASK: Success read from SMQ - "));
         Serial.print(sm.forward);
+        Serial.print(F(" "));
         Serial.println(sm.RPM);
 #endif
+        my_motor.setSpeed(sm.RPM);
+        if (sm.forward)
+          my_motor.step(MAXSTEPS);
+        else
+          my_motor.step(-MAXSTEPS);
 
         // We read our value, delay for next value
-        vTaskDelay(pdMS_TO_TICKS(250));
+        vTaskDelay(pdMS_TO_TICKS(50));
       }
       else
       {
@@ -342,7 +348,7 @@ void SM_TASK(void *pvParameters) // This is a task.
         Serial.println(F("SM_TASK: Failure reading from SMQ! SMQ Empty!"));
 #endif
         // We didn't read our value, delay for next value
-        vTaskDelay(pdMS_TO_TICKS(250));
+        vTaskDelay(pdMS_TO_TICKS(50));
       }
     }
   }
@@ -1305,6 +1311,26 @@ void CONT_TASK(void *pvParameters)
 #endif
         }
 
+        // Send number to DRQ
+        sprintf(display_arr, "%d", int(ht.humidity));
+        if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+          Serial.println(display_arr);
+          Serial.println(F("CONT_TASK: Giving DP_SEMAPHORE!"));
+
+#endif
+          xSemaphoreGive(DP_SEMAPHORE);
+        }
+        else
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Failure sending to DRQ! It's full! - "));
+          Serial.println(display_arr);
+#endif
+        }
+
         break;
 
       case DPSW1_OFF:
@@ -1325,6 +1351,45 @@ void CONT_TASK(void *pvParameters)
 
         else
           sm.RPM = 15;
+
+        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
+        else
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Failure sending to SMQ! It's full! - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
+
+        // Send number to DRQ
+        sprintf(display_arr, "%d", int(ht.temperature));
+        if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+          Serial.println(display_arr);
+          Serial.println(F("CONT_TASK: Giving DP_SEMAPHORE!"));
+
+#endif
+          xSemaphoreGive(DP_SEMAPHORE);
+        }
+        else
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Failure sending to DRQ! It's full! - "));
+          Serial.println(display_arr);
+#endif
+        }
         break;
 
       case DPSW2:
