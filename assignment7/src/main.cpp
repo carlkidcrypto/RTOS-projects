@@ -2,7 +2,7 @@
 #include <Arduino_FreeRTOS.h>
 #include <semphr.h>
 #include <queue.h>
-#include <Stepper.h>
+#include <AccelStepper.h>
 #include <ClosedCube_HDC1080.h>
 #define DEBUG_FLAG 1
 
@@ -17,7 +17,7 @@ void setup();
 void loop();
 
 // Define the Semaphores
-SemaphoreHandle_t DP_SEMAPHORE;
+SemaphoreHandle_t DP_SEMAPHORE, DS_SEMAPHORE, SM_SEMAPHORE, HT_SEMAPHORE;
 
 // Define the Queues
 QueueHandle_t LQ, RQ, DRQ, HTQ, SMQ, DSQ; // Left Queue, Right Queue, Driver Queue, Humi/Temp Queue, Stepper Motor Queue, Dip Switch Queue
@@ -34,6 +34,27 @@ void setup()
   {
     for (;;)
       Serial.println(F("DP_SEMAPHORE: Creation Error, not enough heap mem!"));
+  }
+
+  DS_SEMAPHORE = xSemaphoreCreateBinary();
+  if (DS_SEMAPHORE == NULL)
+  {
+    for (;;)
+      Serial.println(F("DS_SEMAPHORE: Creation Error, not enough heap mem!"));
+  }
+
+  SM_SEMAPHORE = xSemaphoreCreateBinary();
+  if (SM_SEMAPHORE == NULL)
+  {
+    for (;;)
+      Serial.println(F("SM_SEMAPHORE: Creation Error, not enough heap mem!"));
+  }
+
+  HT_SEMAPHORE = xSemaphoreCreateBinary();
+  if (HT_SEMAPHORE == NULL)
+  {
+    for (;;)
+      Serial.println(F("HT_SEMAPHORE: Creation Error, not enough heap mem!"));
   }
 
   // Define the display struct
@@ -114,7 +135,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY + 2 // priority
+      tskIDLE_PRIORITY + 3 // priority
       ,
       NULL);
 
@@ -130,7 +151,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY + 2 // priority
+      tskIDLE_PRIORITY + 3 // priority
       ,
       NULL);
 
@@ -146,7 +167,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY + 2 // priority
+      tskIDLE_PRIORITY + 3 // priority
       ,
       NULL);
 
@@ -163,7 +184,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY + 1 // priority
+      tskIDLE_PRIORITY + 2 // priority
       ,
       NULL);
 
@@ -180,7 +201,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY + 1 // priority
+      tskIDLE_PRIORITY + 2 // priority
       ,
       NULL);
 
@@ -197,7 +218,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY + 3 // priority
+      tskIDLE_PRIORITY + 2 // priority
       ,
       NULL);
 
@@ -237,52 +258,61 @@ void DS_TASK(void *pvParameters) // This is a task.
 
   for (;;)
   {
-    // Lets read the DIP Switch into a byte. bits are read from right to left, 7-0
-    byte DIPSW = (digitalRead(DIP7) << 7) | (digitalRead(DIP6) << 6) | (digitalRead(DIP5) << 5) | (digitalRead(DIP4) << 4) | (digitalRead(DIP3) << 3) | (digitalRead(DIP2) << 2) | (digitalRead(DIP1) << 1) | (digitalRead(DIP0));
 
-#if DEBUG_FLAG
-    // Note: Our DIP switch shows value 1 for off, value 0 for on
-    Serial.print(F("DS_TASK: DIP Switch Reading: "));
-    Serial.print(DIPSW);
-    Serial.print(" : ");
-    Serial.print(digitalRead(DIP7));
-    Serial.print(digitalRead(DIP6));
-    Serial.print(digitalRead(DIP5));
-    Serial.print(digitalRead(DIP4));
-    Serial.print(digitalRead(DIP3));
-    Serial.print(digitalRead(DIP2));
-    Serial.print(digitalRead(DIP1));
-    Serial.println(digitalRead(DIP0));
-#endif
-
-    // Send read value to DSQ
-    if (DSQ != NULL)
+    // Check for the semaphore, is it there
+    if (xSemaphoreTake(DS_SEMAPHORE, 0) == pdTRUE)
     {
-      if (xQueueSendToBack(DSQ, &DIPSW, (TickType_t)0) == pdTRUE)
-      {
+
+      // Lets read the DIP Switch into a byte. bits are read from right to left, 7-0
+      byte DIPSW = (digitalRead(DIP7) << 7) | (digitalRead(DIP6) << 6) | (digitalRead(DIP5) << 5) | (digitalRead(DIP4) << 4) | (digitalRead(DIP3) << 3) | (digitalRead(DIP2) << 2) | (digitalRead(DIP1) << 1) | (digitalRead(DIP0));
+
 #if DEBUG_FLAG
-        Serial.print(F("DS_TASK: Success sent value to DSQ! - "));
-        Serial.println(DIPSW);
+      // Note: Our DIP switch shows value 1 for off, value 0 for on
+      Serial.print(F("DS_TASK: DIP Switch Reading: "));
+      Serial.print(DIPSW);
+      Serial.print(" : ");
+      Serial.print(digitalRead(DIP7));
+      Serial.print(digitalRead(DIP6));
+      Serial.print(digitalRead(DIP5));
+      Serial.print(digitalRead(DIP4));
+      Serial.print(digitalRead(DIP3));
+      Serial.print(digitalRead(DIP2));
+      Serial.print(digitalRead(DIP1));
+      Serial.println(digitalRead(DIP0));
 #endif
 
-        // We sent our value, delay for next reading
-        vTaskDelay(pdMS_TO_TICKS(250));
-      }
+      // Send read value to DSQ
+      if (DSQ != NULL)
+      {
+        if (xQueueSendToBack(DSQ, &DIPSW, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("DS_TASK: Success sent value to DSQ! - "));
+          Serial.println(DIPSW);
+#endif
 
+          // We sent our value, delay for next reading
+          vTaskDelay(pdMS_TO_TICKS(250));
+        }
+
+        else
+        {
+#if DEBUG_FLAG
+          Serial.print(F("DS_TASK: Failure sending value to DSQ! DSQ FULL! - "));
+          Serial.println(DIPSW);
+#endif
+
+          // We didn't send our value, delay for next reading
+          vTaskDelay(pdMS_TO_TICKS(250));
+        }
+      }
       else
-      {
-#if DEBUG_FLAG
-        Serial.print(F("DS_TASK: Failure sending value to DSQ! DSQ FULL! - "));
-        Serial.println(DIPSW);
-#endif
-
-        // We didn't send our value, delay for next reading
+        // DSQ failure
         vTaskDelay(pdMS_TO_TICKS(250));
-      }
     }
+    // We don't have the semaphore
     else
-      // DSQ failure, yield
-      taskYIELD();
+      vTaskDelay(pdMS_TO_TICKS(250));
   }
 }
 
@@ -293,9 +323,6 @@ void SM_TASK(void *pvParameters) // This is a task.
 #define IN2 32
 #define IN3 34
 #define IN4 36
-
-// Define the max steps per rotation. See data sheet
-#define MAXSTEPS 2048
 
   // make pins input
   pinMode(IN1, OUTPUT);
@@ -316,41 +343,61 @@ void SM_TASK(void *pvParameters) // This is a task.
   sm.RPM = 15;
 
   // Create a stepper motor object
-  Stepper my_motor = Stepper(MAXSTEPS, IN1, IN3, IN2, IN4);
-  //my_motor.setSpeed(sm.RPM);
-  //my_motor.step(MAXSTEPS); // pos is forward, neg is reverse
+  AccelStepper my_motor(4, IN1, IN3, IN2, IN4);
+  // Set max steps per second, roughly 16 RPM = STEPS/60 (SECONDS IN MIN)
+  my_motor.setMaxSpeed(1000);
+  // Set current position to 0
+  my_motor.setCurrentPosition(0);
 
   for (;;)
   {
-    // Check the SMQ
-    if (SMQ != NULL)
-    {
-      if (xQueueReceive(SMQ, &sm, (TickType_t)0) == pdTRUE)
-      {
-#if DEBUG_FLAG
-        Serial.print(F("SM_TASK: Success read from SMQ - "));
-        Serial.print(sm.forward);
-        Serial.print(F(" "));
-        Serial.println(sm.RPM);
-#endif
-        my_motor.setSpeed(sm.RPM);
-        if (sm.forward)
-          my_motor.step(MAXSTEPS);
-        else
-          my_motor.step(-MAXSTEPS);
+    my_motor.run();
 
-        // We read our value, delay for next value
-        vTaskDelay(pdMS_TO_TICKS(50));
-      }
-      else
+    // Check for the semaphore, is it there
+    if (xSemaphoreTake(SM_SEMAPHORE, 0) == pdTRUE)
+    {
+
+      // Check the SMQ
+      if (SMQ != NULL)
       {
+        if (xQueueReceive(SMQ, &sm, (TickType_t)0) == pdTRUE)
+        {
 #if DEBUG_FLAG
-        Serial.println(F("SM_TASK: Failure reading from SMQ! SMQ Empty!"));
+          Serial.print(F("SM_TASK: Success read from SMQ - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
 #endif
-        // We didn't read our value, delay for next value
-        vTaskDelay(pdMS_TO_TICKS(50));
+          if (sm.forward == true)
+          { // In steps per second, RPM * 60 = Steps per second
+            while (my_motor.currentPosition() != 4096)
+            {
+              my_motor.setSpeed(sm.RPM * 60);
+              my_motor.runSpeed();
+            }
+          }
+          else
+          { // Negative is counter clockwise
+            while (my_motor.currentPosition() != -4096)
+            {
+              my_motor.setSpeed(-(sm.RPM * 60));
+              my_motor.runSpeed();
+            }
+          }
+        }
+        else
+        {
+#if DEBUG_FLAG
+          Serial.println(F("SM_TASK: Failure reading from SMQ! SMQ Empty!"));
+#endif
+          // We didn't read our value, delay for next value
+          vTaskDelay(pdMS_TO_TICKS(250));
+        }
       }
     }
+    // We didn't get the semaphore
+    else
+      vTaskDelay(pdMS_TO_TICKS(250));
   }
 }
 
@@ -375,42 +422,48 @@ void HT_TASK(void *pvParameters) // This is a task.
 
   for (;;)
   {
-    // get the humi/temp values
-    HT_READINGS.temperature = hdc1080.readTemperature();
-    HT_READINGS.humidity = hdc1080.readHumidity();
-
-    // Send read value to HTQ
-    if (HTQ != NULL)
+    // Check for the semaphore, is it there
+    if (xSemaphoreTake(HT_SEMAPHORE, 0) == pdTRUE)
     {
-      if (xQueueSendToBack(HTQ, &HT_READINGS, (TickType_t)0) == pdTRUE)
+      // get the humi/temp values
+      HT_READINGS.temperature = hdc1080.readTemperature();
+      HT_READINGS.humidity = hdc1080.readHumidity();
+
+      // Send read value to HTQ
+      if (HTQ != NULL)
       {
+        if (xQueueSendToBack(HTQ, &HT_READINGS, (TickType_t)0) == pdTRUE)
+        {
 #if DEBUG_FLAG
-        Serial.print(F("HT_TASK: Success sent value to HTQ! - "));
-        Serial.print(HT_READINGS.humidity);
-        Serial.print(" - ");
-        Serial.println(HT_READINGS.temperature);
+          Serial.print(F("HT_TASK: Success sent value to HTQ! - "));
+          Serial.print(HT_READINGS.humidity);
+          Serial.print(" - ");
+          Serial.println(HT_READINGS.temperature);
 #endif
 
-        // We sent our value, delay for next reading
-        vTaskDelay(pdMS_TO_TICKS(250));
-      }
+          // We sent our value, delay for next reading
+          vTaskDelay(pdMS_TO_TICKS(250));
+        }
 
+        else
+        {
+#if DEBUG_FLAG
+          Serial.print(F("HT_TASK: Failure sending value to HTQ! HTQ FULL! - "));
+          Serial.print(HT_READINGS.humidity);
+          Serial.print(" - ");
+          Serial.println(HT_READINGS.temperature);
+#endif
+
+          // We didn't send our value, delay for next reading
+          vTaskDelay(pdMS_TO_TICKS(250));
+        }
+      }
       else
-      {
-#if DEBUG_FLAG
-        Serial.print(F("HT_TASK: Failure sending value to HTQ! HTQ FULL! - "));
-        Serial.print(HT_READINGS.humidity);
-        Serial.print(" - ");
-        Serial.println(HT_READINGS.temperature);
-#endif
-
-        // We didn't send our value, delay for next reading
+        // DSQ failure
         vTaskDelay(pdMS_TO_TICKS(250));
-      }
     }
     else
-      // DSQ failure, yield
-      taskYIELD();
+      vTaskDelay(pdMS_TO_TICKS(250));
   }
 }
 
@@ -1029,15 +1082,15 @@ void DR_TASK(void *pvParameters) // This is a task.
           xSemaphoreGive(DP_SEMAPHORE);
         }
         else
-          taskYIELD();
+          vTaskDelay(pdMS_TO_TICKS(250));
       }
       else
         // failed to get item out of queue, Yield
-        taskYIELD();
+        vTaskDelay(pdMS_TO_TICKS(250));
     }
     else
       // Queue is full or something... Yield
-      taskYIELD();
+      vTaskDelay(pdMS_TO_TICKS(250));
   }
 }
 
@@ -1170,15 +1223,15 @@ void DP_TASK(void *pvParameters) // This is a task.
         }
         else
           // We tried to grab the number but failed.  Yield anyway
-          taskYIELD();
+          vTaskDelay(pdMS_TO_TICKS(250));
       }
       else
         // Nothing for us to do, yield again
-        taskYIELD();
+        vTaskDelay(pdMS_TO_TICKS(250));
     }
     else
       // Semaphore isn't available lets yield for other tasks
-      taskYIELD();
+      vTaskDelay(pdMS_TO_TICKS(250));
   }
 }
 
@@ -1186,6 +1239,7 @@ void CONT_TASK(void *pvParameters)
 {
   // Define char array for display
   char display_arr[3];
+  sprintf(display_arr, "%02d", 0);
 
   // Define the stepper motor struct
   struct stepper_motor
@@ -1236,279 +1290,250 @@ void CONT_TASK(void *pvParameters)
     // Check all the queues and make sure they are valid
     if ((DSQ != NULL) && (SMQ != NULL) && (DRQ != NULL) && (HTQ != NULL))
     {
-      // Read from the DSQ
-      if (xQueueReceive(DSQ, &DIPSW, (TickType_t)0) == pdTRUE)
+      // Grab fresh data from DSQ and HTQ
+      if ((xQueueReceive(DSQ, &DIPSW, (TickType_t)0) == pdTRUE) && (xQueueReceive(HTQ, &ht, (TickType_t)0) == pdTRUE))
       {
 #if DEBUG_FLAG
-        Serial.print(F("CONT_TASK: Success read from DSQ - "));
+        Serial.println(F("CONT_TASK: Success read from DSQ and HTQ"));
+        Serial.print(F("CONT_TASK: DIPSW - "));
         Serial.println(DIPSW);
+        Serial.print(F("CONT_TASK: Temp, Humi - "));
+        Serial.print(ht.temperature);
+        Serial.print(F(" "));
+        Serial.println(ht.humidity);
 #endif
+
+        // We have new values, we need to find any changes
+        // Update the FSM state from the DIP Switch value
+        FSM = states(DIPSW);
+
+        // check the FSM value and do stuff.
+        switch (FSM)
+        {
+        case OVERLOAD:
+#if DEBUG_FLAG
+          Serial.println(F("CONT_TASK: Entered OVERLOAD state!"));
+#endif
+          break;
+
+        case DPSW1_ON:
+#if DEBUG_FLAG
+          Serial.println(F("CONT_TASK: Entered DPSW1_ON state!"));
+#endif
+          // Move stepper on humidity / Off on Temperature
+          sm.forward = true;
+          if (ht.humidity >= 0.00 && ht.humidity <= 10.00)
+            sm.RPM = 3;
+
+          else if (ht.humidity >= 10.01 && ht.humidity <= 20.00)
+            sm.RPM = 6;
+
+          else if (ht.humidity >= 30.01 && ht.humidity <= 40.00)
+            sm.RPM = 9;
+
+          else if (ht.humidity >= 50.01 && ht.humidity <= 60.00)
+            sm.RPM = 12;
+
+          else
+            sm.RPM = 15;
+
+          // Send to SMQ
+          if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+            Serial.print(sm.forward);
+            Serial.print(F(" "));
+            Serial.println(sm.RPM);
+#endif
+          }
+
+          // Send number to DRQ
+          sprintf(display_arr, "%02d", int(ht.humidity));
+          if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+            Serial.println(display_arr);
+            Serial.println(F("CONT_TASK: Giving DP_SEMAPHORE!"));
+
+#endif
+          }
+
+          // We have finished with this state! Give Semaphore to SM_TASK
+          xSemaphoreGive(SM_SEMAPHORE);
+
+          break;
+
+        case DPSW1_OFF:
+#if DEBUG_FLAG
+          Serial.println(F("CONT_TASK: Entered DPSW1_OFF state!"));
+#endif
+          // Move stepper on humidity / Off on Temperature
+          // NOTE: Max RPM is 15 since we are only running on 5 V
+          // also note temp is in degrees Celcius
+          if (ht.temperature >= 0.00 && ht.temperature <= 10.00)
+            sm.RPM = 3;
+
+          else if (ht.temperature >= 10.01 && ht.temperature <= 20.00)
+            sm.RPM = 6;
+
+          else if (ht.temperature >= 20.01 && ht.temperature <= 30.00)
+            sm.RPM = 9;
+
+          else if (ht.temperature >= 30.01 && ht.temperature <= 40.00)
+            sm.RPM = 12;
+
+          else
+            sm.RPM = 15;
+
+          if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+            Serial.print(sm.forward);
+            Serial.print(F(" "));
+            Serial.println(sm.RPM);
+#endif
+          }
+
+          // Send number to DRQ
+          sprintf(display_arr, "%02d", int(ht.temperature));
+          if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+            Serial.println(display_arr);
+            Serial.println(F("CONT_TASK: Giving DP_SEMAPHORE!"));
+
+#endif
+            xSemaphoreGive(DP_SEMAPHORE);
+          }
+
+          // We have finished with this state! Give Semaphore to SM_TASK
+          xSemaphoreGive(SM_SEMAPHORE);
+
+          break;
+
+        case DPSW2:
+#if DEBUG_FLAG
+          Serial.println(F("CONT_TASK: Entered DPSW2 state!"));
+#endif
+          // Overrides 1 and just continuously moves stepper clockwise
+          sm.forward = true;
+          sm.RPM = 15;
+          // Send to SMQ
+          if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+            Serial.print(sm.forward);
+            Serial.print(F(" "));
+            Serial.println(sm.RPM);
+#endif
+          }
+
+          // We have finished with this state! Give Semaphore to SM_TASK
+          xSemaphoreGive(SM_SEMAPHORE);
+
+          break;
+
+        case DPSW3:
+#if DEBUG_FLAG
+          Serial.println(F("CONT_TASK: Entered DPSW3 state!"));
+#endif
+          // Override's 1 and just continuously moves stepper counterclockwise
+          sm.forward = false;
+          sm.RPM = 15;
+          // Send to SMQ
+          if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+            Serial.print(sm.forward);
+            Serial.print(F(" "));
+            Serial.println(sm.RPM);
+#endif
+          }
+
+          // We have finished with this state! Give Semaphore to SM_TASK
+          xSemaphoreGive(SM_SEMAPHORE);
+
+          break;
+
+        case DPSW4:
+#if DEBUG_FLAG
+          Serial.println(F("CONT_TASK: Entered DPSW4 state!"));
+#endif
+          // stops everything and overrides DP1, DP2 and DP3
+          sm.RPM = 0;
+          sm.forward = true;
+
+          // Send to SMQ
+          if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+            Serial.print(sm.forward);
+            Serial.print(F(" "));
+            Serial.println(sm.RPM);
+#endif
+          }
+
+          // We have finished with this state! Give Semaphore to SM_TASK
+          xSemaphoreGive(SM_SEMAPHORE);
+
+          break;
+
+        case DPSW2and3:
+#if DEBUG_FLAG
+          Serial.println(F("CONT_TASK: Entered DPSW2and3 state!"));
+#endif
+          // then do one revolution clockwise and one counterclockwise and repeat
+
+          // do one revolution at max speed
+          sm.RPM = 15;
+          sm.forward = true;
+
+          // send to SMQ and delay a bit. Wait for completion.
+          // send to SMQ
+          break;
+
+        default:
+#if DEBUG_FLAG
+          Serial.println(F("CONT_TASK: Entered default state!"));
+#endif
+          // invalid inputs don't change state
+          // Send to SMQ
+          if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+            Serial.print(sm.forward);
+            Serial.print(F(" "));
+            Serial.println(sm.RPM);
+#endif
+          }
+
+          // We have finished with this state! Give Semaphore to SM_TASK
+          xSemaphoreGive(SM_SEMAPHORE);
+
+          break;
+        } // End of switch statement
       }
+      // We couldn't grab fresh data so request it
       else
       {
 #if DEBUG_FLAG
-        Serial.println(F("CONT_TASK: Failure reading from DSQ! DSQ Empty!"));
+        Serial.println(F("CONT_TASK: Giving semaphores - DS, SM, HT"));
 #endif
-      }
-
-      // Read from HTQ
-      if (xQueueReceive(HTQ, &ht, (TickType_t)0) == pdTRUE)
-      {
-#if DEBUG_FLAG
-        Serial.print(F("CONT_TASK: Success read from HTQ - "));
-        Serial.print(ht.humidity);
-        Serial.println(ht.temperature);
-#endif
-      }
-      else
-      {
-#if DEBUG_FLAG
-        Serial.println(F("CONT_TASK: Failure reading from HTQ! HTQ Empty!"));
-#endif
-      }
-
-      // check the FSM value and do stuff.
-      switch (FSM)
-      {
-      case OVERLOAD:
-        break;
-
-      case DPSW1_ON:
-        // Move stepper on humidity / Off on Temperature
-        sm.forward = true;
-        if (ht.humidity >= 0.00 && ht.humidity <= 25.00)
-          sm.RPM = 3;
-
-        else if (ht.humidity >= 25.01 && ht.humidity <= 50.00)
-          sm.RPM = 6;
-
-        else if (ht.humidity >= 50.01 && ht.humidity <= 75.00)
-          sm.RPM = 9;
-
-        else if (ht.humidity >= 75.01 && ht.humidity <= 100.00)
-          sm.RPM = 12;
-
-        else
-          sm.RPM = 15;
-
-        // Send to SMQ
-        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
-        {
-#if DEBUG_FLAG
-          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
-          Serial.print(sm.forward);
-          Serial.print(F(" "));
-          Serial.println(sm.RPM);
-#endif
-        }
-        else
-        {
-#if DEBUG_FLAG
-          Serial.print(F("CONT_TASK: Failure sending to SMQ! It's full! - "));
-          Serial.print(sm.forward);
-          Serial.print(F(" "));
-          Serial.println(sm.RPM);
-#endif
-        }
-
-        // Send number to DRQ
-        sprintf(display_arr, "%d", int(ht.humidity));
-        if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
-        {
-#if DEBUG_FLAG
-          Serial.print(F("CONT_TASK: Success sending to DRQ - "));
-          Serial.println(display_arr);
-          Serial.println(F("CONT_TASK: Giving DP_SEMAPHORE!"));
-
-#endif
-          xSemaphoreGive(DP_SEMAPHORE);
-        }
-        else
-        {
-#if DEBUG_FLAG
-          Serial.print(F("CONT_TASK: Failure sending to DRQ! It's full! - "));
-          Serial.println(display_arr);
-#endif
-        }
-
-        break;
-
-      case DPSW1_OFF:
-        // Move stepper on humidity / Off on Temperature
-        // NOTE: Max RPM is 15 since we are only running on 5 V
-        // also note temp is in degrees Celcius
-        if (ht.temperature >= 0.00 && ht.temperature <= 25.00)
-          sm.RPM = 3;
-
-        else if (ht.temperature >= 25.01 && ht.temperature <= 50.00)
-          sm.RPM = 6;
-
-        else if (ht.temperature >= 50.01 && ht.temperature <= 75.00)
-          sm.RPM = 9;
-
-        else if (ht.temperature >= 75.01 && ht.temperature <= 100.00)
-          sm.RPM = 12;
-
-        else
-          sm.RPM = 15;
-
-        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
-        {
-#if DEBUG_FLAG
-          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
-          Serial.print(sm.forward);
-          Serial.print(F(" "));
-          Serial.println(sm.RPM);
-#endif
-        }
-        else
-        {
-#if DEBUG_FLAG
-          Serial.print(F("CONT_TASK: Failure sending to SMQ! It's full! - "));
-          Serial.print(sm.forward);
-          Serial.print(F(" "));
-          Serial.println(sm.RPM);
-#endif
-        }
-
-        // Send number to DRQ
-        sprintf(display_arr, "%d", int(ht.temperature));
-        if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
-        {
-#if DEBUG_FLAG
-          Serial.print(F("CONT_TASK: Success sending to DRQ - "));
-          Serial.println(display_arr);
-          Serial.println(F("CONT_TASK: Giving DP_SEMAPHORE!"));
-
-#endif
-          xSemaphoreGive(DP_SEMAPHORE);
-        }
-        else
-        {
-#if DEBUG_FLAG
-          Serial.print(F("CONT_TASK: Failure sending to DRQ! It's full! - "));
-          Serial.println(display_arr);
-#endif
-        }
-        break;
-
-      case DPSW2:
-        // Overrides 1 and just continuously moves stepper clockwise
-        sm.forward = true;
-        sm.RPM = 15;
-        // Send to SMQ
-        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
-        {
-#if DEBUG_FLAG
-          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
-          Serial.print(sm.forward);
-          Serial.print(F(" "));
-          Serial.println(sm.RPM);
-#endif
-        }
-        else
-        {
-#if DEBUG_FLAG
-          Serial.print(F("CONT_TASK: Failure sending to SMQ! It's full! - "));
-          Serial.print(sm.forward);
-          Serial.print(F(" "));
-          Serial.println(sm.RPM);
-#endif
-        }
-
-        break;
-
-      case DPSW3:
-        // Override's 1 and just continuously moves stepper counterclockwise
-        sm.forward = false;
-        sm.RPM = 15;
-        // Send to SMQ
-        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
-        {
-#if DEBUG_FLAG
-          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
-          Serial.print(sm.forward);
-          Serial.print(F(" "));
-          Serial.println(sm.RPM);
-#endif
-        }
-        else
-        {
-#if DEBUG_FLAG
-          Serial.print(F("CONT_TASK: Failure sending to SMQ! It's full! - "));
-          Serial.print(sm.forward);
-          Serial.print(F(" "));
-          Serial.println(sm.RPM);
-#endif
-        }
-
-        break;
-
-      case DPSW4:
-        // stops everything and overrides DP1, DP2 and DP3
-        sm.RPM = 0;
-        sm.forward = true;
-
-        // Send to SMQ
-        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
-        {
-#if DEBUG_FLAG
-          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
-          Serial.print(sm.forward);
-          Serial.print(F(" "));
-          Serial.println(sm.RPM);
-#endif
-        }
-        else
-        {
-#if DEBUG_FLAG
-          Serial.print(F("CONT_TASK: Failure sending to SMQ! It's full! - "));
-          Serial.print(sm.forward);
-          Serial.print(F(" "));
-          Serial.println(sm.RPM);
-#endif
-        }
-
-        break;
-
-      case DPSW2and3:
-        // then do one revolution clockwise and one counterclockwise and repeat
-
-        // do one revolution at max speed
-        sm.RPM = 15;
-        sm.forward = true;
-
-        // send to SMQ and delay a bit. Wait for completion.
-        // send to SMQ
-        break;
-
-      default:
-        // invalid inputs don't change state
-        // Send to SMQ
-        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
-        {
-#if DEBUG_FLAG
-          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
-          Serial.print(sm.forward);
-          Serial.print(F(" "));
-          Serial.println(sm.RPM);
-#endif
-        }
-        else
-        {
-#if DEBUG_FLAG
-          Serial.print(F("CONT_TASK: Failure sending to SMQ! It's full! - "));
-          Serial.print(sm.forward);
-          Serial.print(F(" "));
-          Serial.println(sm.RPM);
-#endif
-        }
-        break;
+        xSemaphoreGive(DS_SEMAPHORE);
+        xSemaphoreGive(SM_SEMAPHORE);
+        xSemaphoreGive(HT_SEMAPHORE);
+        // Delay for other tasks
+        vTaskDelay(pdMS_TO_TICKS(500));
       }
     }
-
-    // Delay for other tasks
-    vTaskDelay(pdMS_TO_TICKS(500));
   }
 }
 void loop()
