@@ -135,7 +135,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY + 3 // priority
+      tskIDLE_PRIORITY + 1 // priority
       ,
       NULL);
 
@@ -151,7 +151,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY + 3 // priority
+      tskIDLE_PRIORITY + 1 // priority
       ,
       NULL);
 
@@ -167,7 +167,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY + 3 // priority
+      tskIDLE_PRIORITY + 1 // priority
       ,
       NULL);
 
@@ -218,7 +218,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY + 2 // priority
+      tskIDLE_PRIORITY + 3 // priority
       ,
       NULL);
 
@@ -292,7 +292,7 @@ void DS_TASK(void *pvParameters) // This is a task.
 #endif
 
           // We sent our value, delay for next reading
-          vTaskDelay(pdMS_TO_TICKS(250));
+          vTaskDelay(pdMS_TO_TICKS(100));
         }
 
         else
@@ -303,16 +303,16 @@ void DS_TASK(void *pvParameters) // This is a task.
 #endif
 
           // We didn't send our value, delay for next reading
-          vTaskDelay(pdMS_TO_TICKS(250));
+          vTaskDelay(pdMS_TO_TICKS(100));
         }
       }
       else
         // DSQ failure
-        vTaskDelay(pdMS_TO_TICKS(250));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
     // We don't have the semaphore
     else
-      vTaskDelay(pdMS_TO_TICKS(250));
+      vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
 
@@ -391,13 +391,13 @@ void SM_TASK(void *pvParameters) // This is a task.
           Serial.println(F("SM_TASK: Failure reading from SMQ! SMQ Empty!"));
 #endif
           // We didn't read our value, delay for next value
-          vTaskDelay(pdMS_TO_TICKS(250));
+          vTaskDelay(pdMS_TO_TICKS(100));
         }
       }
     }
     // We didn't get the semaphore
     else
-      vTaskDelay(pdMS_TO_TICKS(250));
+      vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
 
@@ -442,7 +442,7 @@ void HT_TASK(void *pvParameters) // This is a task.
 #endif
 
           // We sent our value, delay for next reading
-          vTaskDelay(pdMS_TO_TICKS(250));
+          vTaskDelay(pdMS_TO_TICKS(100));
         }
 
         else
@@ -455,15 +455,15 @@ void HT_TASK(void *pvParameters) // This is a task.
 #endif
 
           // We didn't send our value, delay for next reading
-          vTaskDelay(pdMS_TO_TICKS(250));
+          vTaskDelay(pdMS_TO_TICKS(100));
         }
       }
       else
         // DSQ failure
-        vTaskDelay(pdMS_TO_TICKS(250));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
     else
-      vTaskDelay(pdMS_TO_TICKS(250));
+      vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
 
@@ -1082,15 +1082,15 @@ void DR_TASK(void *pvParameters) // This is a task.
           xSemaphoreGive(DP_SEMAPHORE);
         }
         else
-          vTaskDelay(pdMS_TO_TICKS(250));
+          vTaskDelay(pdMS_TO_TICKS(100));
       }
       else
         // failed to get item out of queue, Yield
-        vTaskDelay(pdMS_TO_TICKS(250));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
     else
       // Queue is full or something... Yield
-      vTaskDelay(pdMS_TO_TICKS(250));
+      vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
 
@@ -1207,7 +1207,7 @@ void DP_TASK(void *pvParameters) // This is a task.
           Serial.print(left.D);
           Serial.print(left.E);
           Serial.print(left.F);
-          Serial.println(left.G);
+          Serial.print(left.G);
           Serial.println(left.DP);
 
           Serial.print(F("DP_TASK: Received from  RQ - "));
@@ -1217,21 +1217,21 @@ void DP_TASK(void *pvParameters) // This is a task.
           Serial.print(right.D);
           Serial.print(right.E);
           Serial.print(right.F);
-          Serial.println(right.G);
+          Serial.print(right.G);
           Serial.println(right.DP);
 #endif
         }
         else
           // We tried to grab the number but failed.  Yield anyway
-          vTaskDelay(pdMS_TO_TICKS(250));
+          vTaskDelay(1);
       }
       else
         // Nothing for us to do, yield again
-        vTaskDelay(pdMS_TO_TICKS(250));
+        vTaskDelay(1);
     }
     else
       // Semaphore isn't available lets yield for other tasks
-      vTaskDelay(pdMS_TO_TICKS(250));
+      vTaskDelay(1);
   }
 }
 
@@ -1355,13 +1355,11 @@ void CONT_TASK(void *pvParameters)
 #if DEBUG_FLAG
             Serial.print(F("CONT_TASK: Success sending to DRQ - "));
             Serial.println(display_arr);
-            Serial.println(F("CONT_TASK: Giving DP_SEMAPHORE!"));
 
 #endif
+            // We have finished with this state! Give Semaphore to SM_TASK
+            xSemaphoreGive(SM_SEMAPHORE);
           }
-
-          // We have finished with this state! Give Semaphore to SM_TASK
-          xSemaphoreGive(SM_SEMAPHORE);
 
           break;
 
@@ -1395,6 +1393,8 @@ void CONT_TASK(void *pvParameters)
             Serial.print(F(" "));
             Serial.println(sm.RPM);
 #endif
+            // We have finished with this state! Give Semaphore to SM_TASK
+            xSemaphoreGive(SM_SEMAPHORE);
           }
 
           // Send number to DRQ
@@ -1409,9 +1409,6 @@ void CONT_TASK(void *pvParameters)
 #endif
             xSemaphoreGive(DP_SEMAPHORE);
           }
-
-          // We have finished with this state! Give Semaphore to SM_TASK
-          xSemaphoreGive(SM_SEMAPHORE);
 
           break;
 
@@ -1431,10 +1428,9 @@ void CONT_TASK(void *pvParameters)
             Serial.print(F(" "));
             Serial.println(sm.RPM);
 #endif
+            // We have finished with this state! Give Semaphore to SM_TASK
+            xSemaphoreGive(SM_SEMAPHORE);
           }
-
-          // We have finished with this state! Give Semaphore to SM_TASK
-          xSemaphoreGive(SM_SEMAPHORE);
 
           break;
 
@@ -1454,10 +1450,9 @@ void CONT_TASK(void *pvParameters)
             Serial.print(F(" "));
             Serial.println(sm.RPM);
 #endif
+            // We have finished with this state! Give Semaphore to SM_TASK
+            xSemaphoreGive(SM_SEMAPHORE);
           }
-
-          // We have finished with this state! Give Semaphore to SM_TASK
-          xSemaphoreGive(SM_SEMAPHORE);
 
           break;
 
@@ -1478,11 +1473,9 @@ void CONT_TASK(void *pvParameters)
             Serial.print(F(" "));
             Serial.println(sm.RPM);
 #endif
-          }
-
           // We have finished with this state! Give Semaphore to SM_TASK
           xSemaphoreGive(SM_SEMAPHORE);
-
+          }
           break;
 
         case DPSW2and3:
@@ -1513,22 +1506,20 @@ void CONT_TASK(void *pvParameters)
             Serial.print(F(" "));
             Serial.println(sm.RPM);
 #endif
+            // We have finished with this state! Give Semaphore to SM_TASK
+            xSemaphoreGive(SM_SEMAPHORE);
           }
-
-          // We have finished with this state! Give Semaphore to SM_TASK
-          xSemaphoreGive(SM_SEMAPHORE);
 
           break;
         } // End of switch statement
-      }
+      } // End of XQueueReceive
       // We couldn't grab fresh data so request it
       else
       {
 #if DEBUG_FLAG
-        Serial.println(F("CONT_TASK: Giving semaphores - DS, SM, HT"));
+        Serial.println(F("CONT_TASK: Giving semaphores - DS, HT"));
 #endif
         xSemaphoreGive(DS_SEMAPHORE);
-        xSemaphoreGive(SM_SEMAPHORE);
         xSemaphoreGive(HT_SEMAPHORE);
         // Delay for other tasks
         vTaskDelay(pdMS_TO_TICKS(500));
