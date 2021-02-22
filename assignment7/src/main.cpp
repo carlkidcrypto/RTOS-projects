@@ -364,20 +364,14 @@ void SM_TASK(void *pvParameters) // This is a task.
         {
           // Set the motor speed in steps per second
           my_motor.setSpeed((sm.RPM * 2048) / 60);
-          if (my_motor.distanceToGo() == 0)
-          {
-            my_motor.moveTo(2048);
-            my_motor.run();
-          }
+          my_motor.moveTo(2048);
+
         }
         else
         {
           my_motor.setSpeed(-(sm.RPM * 2048) / 60);
-          if (my_motor.distanceToGo() == 0)
-          {
-            my_motor.moveTo(-2048);
-            my_motor.run();
-          }
+          my_motor.moveTo(-2048);
+            
         }
 
         vTaskDelay(pdMS_TO_TICKS(1));
@@ -388,20 +382,14 @@ void SM_TASK(void *pvParameters) // This is a task.
         {
           // Set the motor speed in steps per second
           my_motor.setSpeed((sm.RPM * 2048) / 60);
-          if (my_motor.distanceToGo() == 0)
-          {
-            my_motor.moveTo(2048);
-            my_motor.run();
-          }
+          my_motor.moveTo(2048);
+
         }
         else
         {
           my_motor.setSpeed(-(sm.RPM * 2048) / 60);
-          if (my_motor.distanceToGo() == 0)
-          {
-            my_motor.moveTo(-2048);
-            my_motor.run();
-          }
+          my_motor.moveTo(-2048);
+            
         }
         // We didn't read our value, delay for next value
         vTaskDelay(pdMS_TO_TICKS(1));
@@ -1248,7 +1236,7 @@ void CONT_TASK(void *pvParameters)
 {
   // Define char array for display
   char display_arr[3];
-  sprintf(display_arr, "%02d", 0);
+  sprintf(display_arr, "%02X", 0);
 
   // Define the stepper motor struct
   struct stepper_motor
@@ -1513,14 +1501,70 @@ void CONT_TASK(void *pvParameters)
 #if DEBUG_FLAG
           Serial.println(F("CONT_TASK: Entered DPSW2and3 state!"));
 #endif
-          // then do one revolution clockwise and one counterclockwise and repeat
+          // one revolution clockwise and one counterclockwise and repeat
 
-          // do one revolution at max speed
+          // Note it takes about ~4 seconds to do 1 full reolution @ 15 rpm
+          // do one Clockwise revolution at max speed
           sm.RPM = 15;
-          sm.forward = true;
+          sm.forward = !sm.forward; // toggle the current bool value
+          
+          if(sm.forward == true)
+          {
+          
+          // Send to SMQ
+          if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+            Serial.print(sm.forward);
+            Serial.print(F(" "));
+            Serial.println(sm.RPM);
+#endif
+          }
 
-          // send to SMQ and delay a bit. Wait for completion.
-          // send to SMQ
+          // Send number to DRQ
+          sprintf(display_arr, "%02X", 0x0C);
+          if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+            Serial.println(display_arr);
+
+#endif
+          }
+          }
+          else
+          {
+          // do one Counter Clockwise revolution at max speed
+          sm.RPM = 15;
+          sm.forward = false;
+          // Send to SMQ
+          if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+            Serial.print(sm.forward);
+            Serial.print(F(" "));
+            Serial.println(sm.RPM);
+#endif
+          }
+
+          // Send number to DRQ
+          sprintf(display_arr, "%02X", 0xCC);
+          if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+            Serial.println(display_arr);
+
+#endif
+          }
+          }
+
+          // We delay 4 seconds to allow for a full rotation
+          vTaskDelay(pdMS_TO_TICKS(4000));
+
+
           break;
 
         default:
