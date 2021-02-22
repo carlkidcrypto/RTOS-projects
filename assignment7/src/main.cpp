@@ -4,7 +4,7 @@
 #include <queue.h>
 #include <AccelStepper.h>
 #include <ClosedCube_HDC1080.h>
-#define DEBUG_FLAG 1
+#define DEBUG_FLAG 0
 
 // Define the tasks
 void DS_TASK(void *pvParameters);   // DIP Switch Task
@@ -17,7 +17,7 @@ void setup();
 void loop();
 
 // Define the Semaphores
-SemaphoreHandle_t DP_SEMAPHORE, DS_SEMAPHORE, SM_SEMAPHORE, HT_SEMAPHORE;
+SemaphoreHandle_t DP_SEMAPHORE, DS_SEMAPHORE, HT_SEMAPHORE;
 
 // Define the Queues
 QueueHandle_t LQ, RQ, DRQ, HTQ, SMQ, DSQ; // Left Queue, Right Queue, Driver Queue, Humi/Temp Queue, Stepper Motor Queue, Dip Switch Queue
@@ -41,13 +41,6 @@ void setup()
   {
     for (;;)
       Serial.println(F("DS_SEMAPHORE: Creation Error, not enough heap mem!"));
-  }
-
-  SM_SEMAPHORE = xSemaphoreCreateBinary();
-  if (SM_SEMAPHORE == NULL)
-  {
-    for (;;)
-      Serial.println(F("SM_SEMAPHORE: Creation Error, not enough heap mem!"));
   }
 
   HT_SEMAPHORE = xSemaphoreCreateBinary();
@@ -340,64 +333,80 @@ void SM_TASK(void *pvParameters) // This is a task.
   // init sm to default values
   stepper_motor sm;
   sm.forward = true;
+  // Note: Steps per second = RPM * 2048 / 60
   sm.RPM = 15;
 
   // Create a stepper motor object
+  // Set the motor to full step mode, 2048 total steps. (that what the 4 means) (8 means half step mode)
   AccelStepper my_motor(4, IN1, IN3, IN2, IN4);
-  // Set max steps per second, roughly 16 RPM = STEPS/60 (SECONDS IN MIN)
+  // Set max steps per second, roughly 16 RPM = 16 *2048 / 60 = 546.133333
   my_motor.setMaxSpeed(1000);
   // Set current position to 0
   my_motor.setCurrentPosition(0);
 
   for (;;)
   {
+    // run the motor. These needs to run whenever possible. At best once every ~1ms
     my_motor.run();
 
-    // Check for the semaphore, is it there
-    if (xSemaphoreTake(SM_SEMAPHORE, 0) == pdTRUE)
+    // Check the SMQ
+    if (SMQ != NULL)
     {
-
-      // Check the SMQ
-      if (SMQ != NULL)
+      if (xQueueReceive(SMQ, &sm, (TickType_t)0) == pdTRUE)
       {
-        if (xQueueReceive(SMQ, &sm, (TickType_t)0) == pdTRUE)
-        {
 #if DEBUG_FLAG
-          Serial.print(F("SM_TASK: Success read from SMQ - "));
-          Serial.print(sm.forward);
-          Serial.print(F(" "));
-          Serial.println(sm.RPM);
+        Serial.print(F("SM_TASK: Success read from SMQ - "));
+        Serial.print(sm.forward);
+        Serial.print(F(" "));
+        Serial.println(sm.RPM);
 #endif
-          if (sm.forward == true)
-          { // In steps per second, RPM * 60 = Steps per second
-            while (my_motor.currentPosition() != 4096)
-            {
-              my_motor.setSpeed(sm.RPM * 60);
-              my_motor.runSpeed();
-            }
-          }
-          else
-          { // Negative is counter clockwise
-            while (my_motor.currentPosition() != -4096)
-            {
-              my_motor.setSpeed(-(sm.RPM * 60));
-              my_motor.runSpeed();
-            }
+        if (sm.forward == true)
+        { // In steps per second, RPM * 60 = Steps per second
+
+          // ISSUES IS HERE IN THIS WHILE LOOPS!!! IT DOESN"T LET ANYTHING ELSE RUN
+          // MAKE THIS NON BLOCKING!
+          // Set the motor Speed
+          my_motor.setSpeed((sm.RPM * 2048) / 60);
+          if (my_motor.distanceToGo() == 0)
+          {
+            my_motor.moveTo(2048);
+            my_motor.run();
           }
         }
         else
         {
-#if DEBUG_FLAG
-          Serial.println(F("SM_TASK: Failure reading from SMQ! SMQ Empty!"));
-#endif
-          // We didn't read our value, delay for next value
-          vTaskDelay(pdMS_TO_TICKS(100));
+          my_motor.setSpeed((sm.RPM * 2048) / 60);
+          if (my_motor.distanceToGo() == 0)
+          {
+            my_motor.moveTo(-2048);
+            my_motor.run();
+          }
         }
+
+        vTaskDelay(pdMS_TO_TICKS(1));
+      }
+      else
+      {
+        // Set the motor Speed
+        my_motor.setSpeed((sm.RPM * 2048) / 60);
+        if (my_motor.distanceToGo() == 0)
+        {
+          my_motor.moveTo(2048);
+          my_motor.run();
+        }
+        else
+        {
+          my_motor.setSpeed((sm.RPM * 2048) / 60);
+          if (my_motor.distanceToGo() == 0)
+          {
+            my_motor.moveTo(-2048);
+            my_motor.run();
+          }
+        }
+        // We didn't read our value, delay for next value
+        vTaskDelay(pdMS_TO_TICKS(1));
       }
     }
-    // We didn't get the semaphore
-    else
-      vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
 
@@ -1331,7 +1340,7 @@ void CONT_TASK(void *pvParameters)
           else if (ht.humidity >= 30.01 && ht.humidity <= 40.00)
             sm.RPM = 9;
 
-          else if (ht.humidity >= 50.01 && ht.humidity <= 60.00)
+          else if (ht.humidity >= 40.01 && ht.humidity <= 50.00)
             sm.RPM = 12;
 
           else
@@ -1357,8 +1366,6 @@ void CONT_TASK(void *pvParameters)
             Serial.println(display_arr);
 
 #endif
-            // We have finished with this state! Give Semaphore to SM_TASK
-            xSemaphoreGive(SM_SEMAPHORE);
           }
 
           break;
@@ -1393,8 +1400,6 @@ void CONT_TASK(void *pvParameters)
             Serial.print(F(" "));
             Serial.println(sm.RPM);
 #endif
-            // We have finished with this state! Give Semaphore to SM_TASK
-            xSemaphoreGive(SM_SEMAPHORE);
           }
 
           // Send number to DRQ
@@ -1407,7 +1412,6 @@ void CONT_TASK(void *pvParameters)
             Serial.println(F("CONT_TASK: Giving DP_SEMAPHORE!"));
 
 #endif
-            xSemaphoreGive(DP_SEMAPHORE);
           }
 
           break;
@@ -1418,7 +1422,7 @@ void CONT_TASK(void *pvParameters)
 #endif
           // Overrides 1 and just continuously moves stepper clockwise
           sm.forward = true;
-          sm.RPM = 15;
+          sm.RPM = 10;
           // Send to SMQ
           if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
           {
@@ -1428,8 +1432,18 @@ void CONT_TASK(void *pvParameters)
             Serial.print(F(" "));
             Serial.println(sm.RPM);
 #endif
-            // We have finished with this state! Give Semaphore to SM_TASK
-            xSemaphoreGive(SM_SEMAPHORE);
+          }
+
+          // Send number to DRQ
+          sprintf(display_arr, "%02X", 0x0C);
+          if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+            Serial.println(display_arr);
+            Serial.println(F("CONT_TASK: Giving DP_SEMAPHORE!"));
+
+#endif
           }
 
           break;
@@ -1440,7 +1454,7 @@ void CONT_TASK(void *pvParameters)
 #endif
           // Override's 1 and just continuously moves stepper counterclockwise
           sm.forward = false;
-          sm.RPM = 15;
+          sm.RPM = 10;
           // Send to SMQ
           if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
           {
@@ -1450,8 +1464,6 @@ void CONT_TASK(void *pvParameters)
             Serial.print(F(" "));
             Serial.println(sm.RPM);
 #endif
-            // We have finished with this state! Give Semaphore to SM_TASK
-            xSemaphoreGive(SM_SEMAPHORE);
           }
 
           break;
@@ -1473,8 +1485,6 @@ void CONT_TASK(void *pvParameters)
             Serial.print(F(" "));
             Serial.println(sm.RPM);
 #endif
-          // We have finished with this state! Give Semaphore to SM_TASK
-          xSemaphoreGive(SM_SEMAPHORE);
           }
           break;
 
@@ -1485,7 +1495,7 @@ void CONT_TASK(void *pvParameters)
           // then do one revolution clockwise and one counterclockwise and repeat
 
           // do one revolution at max speed
-          sm.RPM = 15;
+          sm.RPM = 10;
           sm.forward = true;
 
           // send to SMQ and delay a bit. Wait for completion.
@@ -1506,13 +1516,11 @@ void CONT_TASK(void *pvParameters)
             Serial.print(F(" "));
             Serial.println(sm.RPM);
 #endif
-            // We have finished with this state! Give Semaphore to SM_TASK
-            xSemaphoreGive(SM_SEMAPHORE);
           }
 
           break;
         } // End of switch statement
-      } // End of XQueueReceive
+      }   // End of XQueueReceive
       // We couldn't grab fresh data so request it
       else
       {
@@ -1522,7 +1530,7 @@ void CONT_TASK(void *pvParameters)
         xSemaphoreGive(DS_SEMAPHORE);
         xSemaphoreGive(HT_SEMAPHORE);
         // Delay for other tasks
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(250));
       }
     }
   }
