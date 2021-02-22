@@ -4,7 +4,7 @@
 #include <queue.h>
 #include <AccelStepper.h>
 #include <ClosedCube_HDC1080.h>
-#define DEBUG_FLAG 0
+#define DEBUG_FLAG 1
 
 // Define the tasks
 void DS_TASK(void *pvParameters);   // DIP Switch Task
@@ -365,17 +365,15 @@ void SM_TASK(void *pvParameters) // This is a task.
           // Set the motor speed in steps per second
           my_motor.setSpeed((sm.RPM * 2048) / 60);
           my_motor.moveTo(2048);
-
         }
         else
         {
           my_motor.setSpeed(-(sm.RPM * 2048) / 60);
           my_motor.moveTo(-2048);
-            
         }
 
-        vTaskDelay(pdMS_TO_TICKS(1));
-      }
+        taskYIELD();
+      } // End of receving from SMQ
       else
       {
         if (sm.forward == true)
@@ -383,18 +381,18 @@ void SM_TASK(void *pvParameters) // This is a task.
           // Set the motor speed in steps per second
           my_motor.setSpeed((sm.RPM * 2048) / 60);
           my_motor.moveTo(2048);
-
         }
         else
         {
           my_motor.setSpeed(-(sm.RPM * 2048) / 60);
           my_motor.moveTo(-2048);
-            
         }
-        // We didn't read our value, delay for next value
-        vTaskDelay(pdMS_TO_TICKS(1));
-      }
-    }
+
+        taskYIELD();
+      } // Tried receiving from SMQ, but failed
+    }   // Check SMQ for null
+    else
+      taskYIELD();
   }
 }
 
@@ -487,7 +485,7 @@ void DR_TASK(void *pvParameters) // This is a task.
 
   for (;;)
   {
-    if (DRQ != NULL)
+    if ((DRQ != NULL) && (LQ != NULL) && (RQ != NULL))
     {
       if (xQueueReceive(DRQ, &display_arr, (TickType_t)0) == pdPASS)
       {
@@ -1066,28 +1064,28 @@ void DR_TASK(void *pvParameters) // This is a task.
         }
 
         // Once we get here left and right should be loaded
-        if (LQ != NULL && RQ != NULL)
+        // We don't check for NULL. We did that before getting here
+        // load both queues up
+        if ((xQueueSend(LQ, &left, (TickType_t)0) == pdTRUE) && (xQueueSend(RQ, &right, (TickType_t)0)))
         {
-          // load both queues up
-          xQueueSend(LQ, &left, (TickType_t)0);
-          xQueueSend(RQ, &right, (TickType_t)0);
-
 // Now we give DP_SEMAPHORE
 #if DEBUG_FLAG
-          Serial.println(F("DR_TASK: semaphore given!"));
+          Serial.println(F("DR_TASK: semaphore given! - DP_SEMAPHORE"));
 #endif
           xSemaphoreGive(DP_SEMAPHORE);
         }
         else
-          vTaskDelay(pdMS_TO_TICKS(100));
-      }
+          vTaskDelay(pdMS_TO_TICKS(500));
+
+        vTaskDelay(pdMS_TO_TICKS(500));
+      } // End of Receive from queue
       else
-        // failed to get item out of queue, Yield
-        vTaskDelay(pdMS_TO_TICKS(100));
+        // failed to get item out of queue.
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
     else
-      // Queue is full or something... Yield
-      vTaskDelay(pdMS_TO_TICKS(100));
+      // Queue is full or something..
+      vTaskDelay(pdMS_TO_TICKS(500));
   }
 }
 
@@ -1217,18 +1215,19 @@ void DP_TASK(void *pvParameters) // This is a task.
           Serial.print(right.G);
           Serial.println(right.DP);
 #endif
-        }
+          taskYIELD();
+        } // End of receiving from LQ and RQ
         else
           // We tried to grab the number but failed.  Yield anyway
-          vTaskDelay(1);
+          taskYIELD();
       }
       else
-        // Nothing for us to do, yield again
-        vTaskDelay(1);
+        // LQ or RQ are null, yield again
+        taskYIELD();
     }
     else
       // Semaphore isn't available lets yield for other tasks
-      vTaskDelay(1);
+      taskYIELD();
   }
 }
 
@@ -1356,6 +1355,17 @@ void CONT_TASK(void *pvParameters)
 #endif
           }
 
+          // Send number to DRQ
+          sprintf(display_arr, "%02X", 0x0C);
+          if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+            Serial.println(display_arr);
+
+#endif
+          }
+
           break;
 
         case DPSW1_OFF:
@@ -1365,6 +1375,7 @@ void CONT_TASK(void *pvParameters)
           // Move stepper on humidity / Off on Temperature
           // NOTE: Max RPM is 15 since we are only running on 5 V
           // also note temp is in degrees Celcius
+          sm.forward = true;
           if (ht.temperature >= 0.00 && ht.temperature <= 10.00)
             sm.RPM = 3;
 
@@ -1392,6 +1403,17 @@ void CONT_TASK(void *pvParameters)
 
           // Send number to DRQ
           sprintf(display_arr, "%02X", int(ht.temperature));
+          if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+            Serial.println(display_arr);
+
+#endif
+          }
+
+          // Send number to DRQ
+          sprintf(display_arr, "%02X", 0x0C);
           if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
           {
 #if DEBUG_FLAG
@@ -1507,63 +1529,62 @@ void CONT_TASK(void *pvParameters)
           // do one Clockwise revolution at max speed
           sm.RPM = 15;
           sm.forward = !sm.forward; // toggle the current bool value
-          
-          if(sm.forward == true)
-          {
-          
-          // Send to SMQ
-          if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
-          {
-#if DEBUG_FLAG
-            Serial.print(F("CONT_TASK: Success sending to SMQ - "));
-            Serial.print(sm.forward);
-            Serial.print(F(" "));
-            Serial.println(sm.RPM);
-#endif
-          }
 
-          // Send number to DRQ
-          sprintf(display_arr, "%02X", 0x0C);
-          if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+          if (sm.forward == true)
           {
+
+            // Send to SMQ
+            if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+            {
 #if DEBUG_FLAG
-            Serial.print(F("CONT_TASK: Success sending to DRQ - "));
-            Serial.println(display_arr);
+              Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+              Serial.print(sm.forward);
+              Serial.print(F(" "));
+              Serial.println(sm.RPM);
+#endif
+            }
+
+            // Send number to DRQ
+            sprintf(display_arr, "%02X", 0x0C);
+            if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+            {
+#if DEBUG_FLAG
+              Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+              Serial.println(display_arr);
 
 #endif
-          }
+            }
           }
           else
           {
-          // do one Counter Clockwise revolution at max speed
-          sm.RPM = 15;
-          sm.forward = false;
-          // Send to SMQ
-          if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
-          {
+            // do one Counter Clockwise revolution at max speed
+            sm.RPM = 15;
+            sm.forward = false;
+            // Send to SMQ
+            if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+            {
 #if DEBUG_FLAG
-            Serial.print(F("CONT_TASK: Success sending to SMQ - "));
-            Serial.print(sm.forward);
-            Serial.print(F(" "));
-            Serial.println(sm.RPM);
+              Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+              Serial.print(sm.forward);
+              Serial.print(F(" "));
+              Serial.println(sm.RPM);
 #endif
-          }
+            }
 
-          // Send number to DRQ
-          sprintf(display_arr, "%02X", 0xCC);
-          if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
-          {
+            // Send number to DRQ
+            sprintf(display_arr, "%02X", 0xCC);
+            if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+            {
 #if DEBUG_FLAG
-            Serial.print(F("CONT_TASK: Success sending to DRQ - "));
-            Serial.println(display_arr);
+              Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+              Serial.println(display_arr);
 
 #endif
-          }
+            }
           }
 
           // We delay 4 seconds to allow for a full rotation
           vTaskDelay(pdMS_TO_TICKS(4000));
-
 
           break;
 
@@ -1582,9 +1603,11 @@ void CONT_TASK(void *pvParameters)
             Serial.println(sm.RPM);
 #endif
           }
-
+          
           break;
         } // End of switch statement
+
+      taskYIELD();
       }   // End of XQueueReceive
       // We couldn't grab fresh data so request it
       else
@@ -1595,7 +1618,7 @@ void CONT_TASK(void *pvParameters)
         xSemaphoreGive(DS_SEMAPHORE);
         xSemaphoreGive(HT_SEMAPHORE);
         // Delay for other tasks
-        vTaskDelay(pdMS_TO_TICKS(250));
+        vTaskDelay(pdMS_TO_TICKS(500));
       }
     }
   }
