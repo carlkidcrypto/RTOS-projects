@@ -334,7 +334,7 @@ void SM_TASK(void *pvParameters) // This is a task.
   stepper_motor sm;
   sm.forward = true;
   // Note: Steps per second = RPM * 2048 / 60
-  sm.RPM = 15;
+  sm.RPM = 0;
 
   // Create a stepper motor object
   // Set the motor to full step mode, 2048 total steps. (that what the 4 means) (8 means half step mode)
@@ -361,11 +361,8 @@ void SM_TASK(void *pvParameters) // This is a task.
         Serial.println(sm.RPM);
 #endif
         if (sm.forward == true)
-        { // In steps per second, RPM * 60 = Steps per second
-
-          // ISSUES IS HERE IN THIS WHILE LOOPS!!! IT DOESN"T LET ANYTHING ELSE RUN
-          // MAKE THIS NON BLOCKING!
-          // Set the motor Speed
+        {
+          // Set the motor speed in steps per second
           my_motor.setSpeed((sm.RPM * 2048) / 60);
           if (my_motor.distanceToGo() == 0)
           {
@@ -375,7 +372,7 @@ void SM_TASK(void *pvParameters) // This is a task.
         }
         else
         {
-          my_motor.setSpeed((sm.RPM * 2048) / 60);
+          my_motor.setSpeed(-(sm.RPM * 2048) / 60);
           if (my_motor.distanceToGo() == 0)
           {
             my_motor.moveTo(-2048);
@@ -387,16 +384,19 @@ void SM_TASK(void *pvParameters) // This is a task.
       }
       else
       {
-        // Set the motor Speed
-        my_motor.setSpeed((sm.RPM * 2048) / 60);
-        if (my_motor.distanceToGo() == 0)
+        if (sm.forward == true)
         {
-          my_motor.moveTo(2048);
-          my_motor.run();
+          // Set the motor speed in steps per second
+          my_motor.setSpeed((sm.RPM * 2048) / 60);
+          if (my_motor.distanceToGo() == 0)
+          {
+            my_motor.moveTo(2048);
+            my_motor.run();
+          }
         }
         else
         {
-          my_motor.setSpeed((sm.RPM * 2048) / 60);
+          my_motor.setSpeed(-(sm.RPM * 2048) / 60);
           if (my_motor.distanceToGo() == 0)
           {
             my_motor.moveTo(-2048);
@@ -1260,7 +1260,7 @@ void CONT_TASK(void *pvParameters)
   // init sm to some default values
   stepper_motor sm;
   sm.forward = true;
-  sm.RPM = 15;
+  sm.RPM = 0;
 
   // Define the humi/temp struct
   struct humi_temp
@@ -1358,7 +1358,7 @@ void CONT_TASK(void *pvParameters)
           }
 
           // Send number to DRQ
-          sprintf(display_arr, "%02d", int(ht.humidity));
+          sprintf(display_arr, "%02X", int(ht.humidity));
           if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
           {
 #if DEBUG_FLAG
@@ -1403,13 +1403,12 @@ void CONT_TASK(void *pvParameters)
           }
 
           // Send number to DRQ
-          sprintf(display_arr, "%02d", int(ht.temperature));
+          sprintf(display_arr, "%02X", int(ht.temperature));
           if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
           {
 #if DEBUG_FLAG
             Serial.print(F("CONT_TASK: Success sending to DRQ - "));
             Serial.println(display_arr);
-            Serial.println(F("CONT_TASK: Giving DP_SEMAPHORE!"));
 
 #endif
           }
@@ -1422,7 +1421,7 @@ void CONT_TASK(void *pvParameters)
 #endif
           // Overrides 1 and just continuously moves stepper clockwise
           sm.forward = true;
-          sm.RPM = 10;
+          sm.RPM = 15;
           // Send to SMQ
           if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
           {
@@ -1441,7 +1440,6 @@ void CONT_TASK(void *pvParameters)
 #if DEBUG_FLAG
             Serial.print(F("CONT_TASK: Success sending to DRQ - "));
             Serial.println(display_arr);
-            Serial.println(F("CONT_TASK: Giving DP_SEMAPHORE!"));
 
 #endif
           }
@@ -1454,7 +1452,7 @@ void CONT_TASK(void *pvParameters)
 #endif
           // Override's 1 and just continuously moves stepper counterclockwise
           sm.forward = false;
-          sm.RPM = 10;
+          sm.RPM = 15;
           // Send to SMQ
           if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
           {
@@ -1463,6 +1461,17 @@ void CONT_TASK(void *pvParameters)
             Serial.print(sm.forward);
             Serial.print(F(" "));
             Serial.println(sm.RPM);
+#endif
+          }
+
+          // Send number to DRQ
+          sprintf(display_arr, "%02X", 0xCC);
+          if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+            Serial.println(display_arr);
+
 #endif
           }
 
@@ -1486,6 +1495,18 @@ void CONT_TASK(void *pvParameters)
             Serial.println(sm.RPM);
 #endif
           }
+
+          // Send number to DRQ
+          sprintf(display_arr, "%02X", 0x00);
+          if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+          {
+#if DEBUG_FLAG
+            Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+            Serial.println(display_arr);
+
+#endif
+          }
+
           break;
 
         case DPSW2and3:
@@ -1495,7 +1516,7 @@ void CONT_TASK(void *pvParameters)
           // then do one revolution clockwise and one counterclockwise and repeat
 
           // do one revolution at max speed
-          sm.RPM = 10;
+          sm.RPM = 15;
           sm.forward = true;
 
           // send to SMQ and delay a bit. Wait for completion.
