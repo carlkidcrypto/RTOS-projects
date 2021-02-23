@@ -94,7 +94,7 @@ void setup()
       Serial.println(F("RQ: Creation Error, not enough heap mem!"));
   }
 
-  DRQ = xQueueCreate(5, sizeof(display_arr));
+  DRQ = xQueueCreate(10, sizeof(display_arr));
   if (DRQ == NULL)
   {
     for (;;)
@@ -1075,17 +1075,17 @@ void DR_TASK(void *pvParameters) // This is a task.
           xSemaphoreGive(DP_SEMAPHORE);
         }
         else
-          vTaskDelay(pdMS_TO_TICKS(500));
+          vTaskDelay(pdMS_TO_TICKS(250));
 
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(250));
       } // End of Receive from queue
       else
         // failed to get item out of queue.
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(250));
     }
     else
       // Queue is full or something..
-      vTaskDelay(pdMS_TO_TICKS(500));
+      vTaskDelay(pdMS_TO_TICKS(250));
   }
 }
 
@@ -1286,152 +1286,270 @@ void CONT_TASK(void *pvParameters)
     // Check all the queues and make sure they are valid
     if ((DSQ != NULL) && (SMQ != NULL) && (DRQ != NULL) && (HTQ != NULL))
     {
-      // Grab fresh data from DSQ and HTQ
-      if ((xQueueReceive(DSQ, &DIPSW, (TickType_t)0) == pdTRUE) && (xQueueReceive(HTQ, &ht, (TickType_t)0) == pdTRUE))
+
+      // Use the Update state
+      FSM = states(DIPSW);
+
+      // check the FSM value and do stuff.
+      switch (FSM)
       {
+      case OVERLOAD:
 #if DEBUG_FLAG
-        Serial.println(F("CONT_TASK: Success read from DSQ and HTQ"));
-        Serial.print(F("CONT_TASK: DIPSW - "));
-        Serial.println(DIPSW);
-        Serial.print(F("CONT_TASK: Temp, Humi - "));
-        Serial.print(ht.temperature);
-        Serial.print(F(" "));
-        Serial.println(ht.humidity);
+        Serial.println(F("CONT_TASK: Entered OVERLOAD state!"));
 #endif
 
-        // We have new values, we need to find any changes
-        // Update the FSM state from the DIP Switch value
-        FSM = states(DIPSW);
-
-        // check the FSM value and do stuff.
-        switch (FSM)
+        // If we get here, the DRQ is full. That means we are backed up.
+        // We clear the DRQ queue and put 0xOF of OVER FLOW, wait five seconds
+        xQueueReset(DRQ);
+        // Send number to DRQ
+        sprintf(display_arr, "%02X", 0x0F);
+        if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
         {
-        case OVERLOAD:
 #if DEBUG_FLAG
-          Serial.println(F("CONT_TASK: Entered OVERLOAD state!"));
+          Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+          Serial.println(display_arr);
 #endif
-          break;
+        }
+        else // If we get here the DRQ is full!
+          DIPSW = int(OVERLOAD);
 
-        case DPSW1_ON:
+        vTaskDelay(pdMS_TO_TICKS(5000));
+        break;
+
+      case DPSW1_ON:
 #if DEBUG_FLAG
-          Serial.println(F("CONT_TASK: Entered DPSW1_ON state!"));
+        Serial.println(F("CONT_TASK: Entered DPSW1_ON state!"));
 #endif
-          // Move stepper on humidity / Off on Temperature
-          sm.forward = true;
-          if (ht.humidity >= 0.00 && ht.humidity <= 10.00)
-            sm.RPM = 3;
 
-          else if (ht.humidity >= 10.01 && ht.humidity <= 20.00)
-            sm.RPM = 6;
+        // Move stepper on humidity / Off on Temperature
+        sm.forward = true;
+        if (ht.humidity >= 0.00 && ht.humidity <= 10.00)
+          sm.RPM = 3;
 
-          else if (ht.humidity >= 30.01 && ht.humidity <= 40.00)
-            sm.RPM = 9;
+        else if (ht.humidity >= 10.01 && ht.humidity <= 20.00)
+          sm.RPM = 6;
 
-          else if (ht.humidity >= 40.01 && ht.humidity <= 50.00)
-            sm.RPM = 12;
+        else if (ht.humidity >= 30.01 && ht.humidity <= 40.00)
+          sm.RPM = 9;
 
-          else
-            sm.RPM = 15;
+        else if (ht.humidity >= 40.01 && ht.humidity <= 50.00)
+          sm.RPM = 12;
 
-          // Send to SMQ
-          if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
-          {
-#if DEBUG_FLAG
-            Serial.print(F("CONT_TASK: Success sending to SMQ - "));
-            Serial.print(sm.forward);
-            Serial.print(F(" "));
-            Serial.println(sm.RPM);
-#endif
-          }
-
-          // Send number to DRQ
-          sprintf(display_arr, "%02X", int(ht.humidity));
-          if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
-          {
-#if DEBUG_FLAG
-            Serial.print(F("CONT_TASK: Success sending to DRQ - "));
-            Serial.println(display_arr);
-
-#endif
-          }
-
-          // Send number to DRQ
-          sprintf(display_arr, "%02X", 0x0C);
-          if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
-          {
-#if DEBUG_FLAG
-            Serial.print(F("CONT_TASK: Success sending to DRQ - "));
-            Serial.println(display_arr);
-
-#endif
-          }
-
-          break;
-
-        case DPSW1_OFF:
-#if DEBUG_FLAG
-          Serial.println(F("CONT_TASK: Entered DPSW1_OFF state!"));
-#endif
-          // Move stepper on humidity / Off on Temperature
-          // NOTE: Max RPM is 15 since we are only running on 5 V
-          // also note temp is in degrees Celcius
-          sm.forward = true;
-          if (ht.temperature >= 0.00 && ht.temperature <= 10.00)
-            sm.RPM = 3;
-
-          else if (ht.temperature >= 10.01 && ht.temperature <= 20.00)
-            sm.RPM = 6;
-
-          else if (ht.temperature >= 20.01 && ht.temperature <= 30.00)
-            sm.RPM = 9;
-
-          else if (ht.temperature >= 30.01 && ht.temperature <= 40.00)
-            sm.RPM = 12;
-
-          else
-            sm.RPM = 15;
-
-          if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
-          {
-#if DEBUG_FLAG
-            Serial.print(F("CONT_TASK: Success sending to SMQ - "));
-            Serial.print(sm.forward);
-            Serial.print(F(" "));
-            Serial.println(sm.RPM);
-#endif
-          }
-
-          // Send number to DRQ
-          sprintf(display_arr, "%02X", int(ht.temperature));
-          if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
-          {
-#if DEBUG_FLAG
-            Serial.print(F("CONT_TASK: Success sending to DRQ - "));
-            Serial.println(display_arr);
-
-#endif
-          }
-
-          // Send number to DRQ
-          sprintf(display_arr, "%02X", 0x0C);
-          if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
-          {
-#if DEBUG_FLAG
-            Serial.print(F("CONT_TASK: Success sending to DRQ - "));
-            Serial.println(display_arr);
-
-#endif
-          }
-
-          break;
-
-        case DPSW2:
-#if DEBUG_FLAG
-          Serial.println(F("CONT_TASK: Entered DPSW2 state!"));
-#endif
-          // Overrides 1 and just continuously moves stepper clockwise
-          sm.forward = true;
+        else
           sm.RPM = 15;
+
+        // Send to SMQ
+        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
+
+        // Send number to DRQ
+        sprintf(display_arr, "%02X", int(ht.humidity));
+        if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+          Serial.println(display_arr);
+#endif
+        }
+        else // If we get here the DRQ is full!
+          DIPSW = int(OVERLOAD);
+
+        // Send number to DRQ
+        sprintf(display_arr, "%02X", 0x0C);
+        if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+          Serial.println(display_arr);
+#endif
+        }
+        else // If we get here the DRQ is full!
+          DIPSW = int(OVERLOAD);
+
+        break;
+
+      case DPSW1_OFF:
+#if DEBUG_FLAG
+        Serial.println(F("CONT_TASK: Entered DPSW1_OFF state!"));
+#endif
+
+        // Move stepper on humidity / Off on Temperature
+        // NOTE: Max RPM is 15 since we are only running on 5 V
+        // also note temp is in degrees Celcius
+        sm.forward = true;
+        if (ht.temperature >= 0.00 && ht.temperature <= 10.00)
+          sm.RPM = 3;
+
+        else if (ht.temperature >= 10.01 && ht.temperature <= 20.00)
+          sm.RPM = 6;
+
+        else if (ht.temperature >= 20.01 && ht.temperature <= 30.00)
+          sm.RPM = 9;
+
+        else if (ht.temperature >= 30.01 && ht.temperature <= 40.00)
+          sm.RPM = 12;
+
+        else
+          sm.RPM = 15;
+
+        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
+
+        // Send number to DRQ
+        sprintf(display_arr, "%02X", int(ht.temperature));
+        if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+          Serial.println(display_arr);
+#endif
+        }
+        else // If we get here the DRQ is full!
+          DIPSW = int(OVERLOAD);
+
+        // Send number to DRQ
+        sprintf(display_arr, "%02X", 0x0C);
+        if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+          Serial.println(display_arr);
+#endif
+        }
+        else // If we get here the DRQ is full!
+          DIPSW = int(OVERLOAD);
+
+        break;
+
+      case DPSW2:
+#if DEBUG_FLAG
+        Serial.println(F("CONT_TASK: Entered DPSW2 state!"));
+#endif
+
+        // Overrides 1 and just continuously moves stepper clockwise
+        sm.forward = true;
+        sm.RPM = 15;
+        // Send to SMQ
+        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
+
+        // Send number to DRQ
+        sprintf(display_arr, "%02X", 0x0C);
+        if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+          Serial.println(display_arr);
+#endif
+        }
+        else // If we get here the DRQ is full!
+          DIPSW = int(OVERLOAD);
+
+        break;
+
+      case DPSW3:
+#if DEBUG_FLAG
+        Serial.println(F("CONT_TASK: Entered DPSW3 state!"));
+#endif
+
+        // Override's 1 and just continuously moves stepper counterclockwise
+        sm.forward = false;
+        sm.RPM = 15;
+        // Send to SMQ
+        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
+
+        // Send number to DRQ
+        sprintf(display_arr, "%02X", 0xCC);
+        if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+          Serial.println(display_arr);
+#endif
+        }
+        else // If we get here the DRQ is full!
+          DIPSW = int(OVERLOAD);
+
+        break;
+
+      case DPSW4:
+#if DEBUG_FLAG
+        Serial.println(F("CONT_TASK: Entered DPSW4 state!"));
+#endif
+        // Entered a new state clear the DRQ!
+
+        // stops everything and overrides DP1, DP2 and DP3
+        sm.RPM = 0;
+        sm.forward = true;
+
+        // Send to SMQ
+        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
+#endif
+        }
+
+        // Send number to DRQ
+        sprintf(display_arr, "%02X", 0x00);
+        if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+          Serial.println(display_arr);
+#endif
+        }
+        else // If we get here the DRQ is full!
+          DIPSW = int(OVERLOAD);
+
+        break;
+
+      case DPSW2and3:
+#if DEBUG_FLAG
+        Serial.println(F("CONT_TASK: Entered DPSW2and3 state!"));
+#endif
+
+        // one revolution clockwise and one counterclockwise and repeat
+        // Note it takes about ~4 seconds to do 1 full reolution @ 15 rpm
+        // do one Clockwise revolution at max speed
+        sm.RPM = 15;
+        sm.forward = !sm.forward; // toggle the current bool value
+
+        if (sm.forward == true)
+        {
+
           // Send to SMQ
           if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
           {
@@ -1450,19 +1568,16 @@ void CONT_TASK(void *pvParameters)
 #if DEBUG_FLAG
             Serial.print(F("CONT_TASK: Success sending to DRQ - "));
             Serial.println(display_arr);
-
 #endif
           }
-
-          break;
-
-        case DPSW3:
-#if DEBUG_FLAG
-          Serial.println(F("CONT_TASK: Entered DPSW3 state!"));
-#endif
-          // Override's 1 and just continuously moves stepper counterclockwise
+          else // If we get here the DRQ is full!
+            DIPSW = int(OVERLOAD);
+        }
+        else
+        {
+          // do one Counter Clockwise revolution at max speed
+          sm.RPM = 15;
           sm.forward = false;
-          sm.RPM = 15;
           // Send to SMQ
           if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
           {
@@ -1484,131 +1599,48 @@ void CONT_TASK(void *pvParameters)
 
 #endif
           }
+          else // If we get here the DRQ is full!
+            DIPSW = int(OVERLOAD);
+        }
 
-          break;
+        // We delay 4 seconds to allow for a full rotation
+        vTaskDelay(pdMS_TO_TICKS(4000));
 
-        case DPSW4:
+        break;
+
+      default:
 #if DEBUG_FLAG
-          Serial.println(F("CONT_TASK: Entered DPSW4 state!"));
+        Serial.println(F("CONT_TASK: Entered default state!"));
 #endif
-          // stops everything and overrides DP1, DP2 and DP3
-          sm.RPM = 0;
-          sm.forward = true;
-
-          // Send to SMQ
-          if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
-          {
+        // invalid inputs don't change state
+        // Send to SMQ
+        if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
+        {
 #if DEBUG_FLAG
-            Serial.print(F("CONT_TASK: Success sending to SMQ - "));
-            Serial.print(sm.forward);
-            Serial.print(F(" "));
-            Serial.println(sm.RPM);
+          Serial.print(F("CONT_TASK: Success sending to SMQ - "));
+          Serial.print(sm.forward);
+          Serial.print(F(" "));
+          Serial.println(sm.RPM);
 #endif
-          }
+        }
 
-          // Send number to DRQ
-          sprintf(display_arr, "%02X", 0x00);
-          if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
-          {
+        break;
+      } // End of switch statement
+
+      // Grab fresh data from DSQ and HTQ
+      if ((xQueueReceive(DSQ, &DIPSW, (TickType_t)0) == pdTRUE) && (xQueueReceive(HTQ, &ht, (TickType_t)0) == pdTRUE))
+      {
 #if DEBUG_FLAG
-            Serial.print(F("CONT_TASK: Success sending to DRQ - "));
-            Serial.println(display_arr);
-
+        Serial.println(F("CONT_TASK: Success read from DSQ and HTQ"));
+        Serial.print(F("CONT_TASK: DIPSW - "));
+        Serial.println(DIPSW);
+        Serial.print(F("CONT_TASK: Temp, Humi - "));
+        Serial.print(ht.temperature);
+        Serial.print(F(" "));
+        Serial.println(ht.humidity);
 #endif
-          }
-
-          break;
-
-        case DPSW2and3:
-#if DEBUG_FLAG
-          Serial.println(F("CONT_TASK: Entered DPSW2and3 state!"));
-#endif
-          // one revolution clockwise and one counterclockwise and repeat
-
-          // Note it takes about ~4 seconds to do 1 full reolution @ 15 rpm
-          // do one Clockwise revolution at max speed
-          sm.RPM = 15;
-          sm.forward = !sm.forward; // toggle the current bool value
-
-          if (sm.forward == true)
-          {
-
-            // Send to SMQ
-            if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
-            {
-#if DEBUG_FLAG
-              Serial.print(F("CONT_TASK: Success sending to SMQ - "));
-              Serial.print(sm.forward);
-              Serial.print(F(" "));
-              Serial.println(sm.RPM);
-#endif
-            }
-
-            // Send number to DRQ
-            sprintf(display_arr, "%02X", 0x0C);
-            if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
-            {
-#if DEBUG_FLAG
-              Serial.print(F("CONT_TASK: Success sending to DRQ - "));
-              Serial.println(display_arr);
-
-#endif
-            }
-          }
-          else
-          {
-            // do one Counter Clockwise revolution at max speed
-            sm.RPM = 15;
-            sm.forward = false;
-            // Send to SMQ
-            if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
-            {
-#if DEBUG_FLAG
-              Serial.print(F("CONT_TASK: Success sending to SMQ - "));
-              Serial.print(sm.forward);
-              Serial.print(F(" "));
-              Serial.println(sm.RPM);
-#endif
-            }
-
-            // Send number to DRQ
-            sprintf(display_arr, "%02X", 0xCC);
-            if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
-            {
-#if DEBUG_FLAG
-              Serial.print(F("CONT_TASK: Success sending to DRQ - "));
-              Serial.println(display_arr);
-
-#endif
-            }
-          }
-
-          // We delay 4 seconds to allow for a full rotation
-          vTaskDelay(pdMS_TO_TICKS(4000));
-
-          break;
-
-        default:
-#if DEBUG_FLAG
-          Serial.println(F("CONT_TASK: Entered default state!"));
-#endif
-          // invalid inputs don't change state
-          // Send to SMQ
-          if (xQueueSendToBack(SMQ, &sm, (TickType_t)0) == pdTRUE)
-          {
-#if DEBUG_FLAG
-            Serial.print(F("CONT_TASK: Success sending to SMQ - "));
-            Serial.print(sm.forward);
-            Serial.print(F(" "));
-            Serial.println(sm.RPM);
-#endif
-          }
-          
-          break;
-        } // End of switch statement
-
-      taskYIELD();
-      }   // End of XQueueReceive
+        taskYIELD();
+      } // End of XQueueReceive
       // We couldn't grab fresh data so request it
       else
       {
