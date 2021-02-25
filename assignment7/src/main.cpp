@@ -4,7 +4,7 @@
 #include <queue.h>
 #include <AccelStepper.h>
 #include <ClosedCube_HDC1080.h>
-#define DEBUG_FLAG 1
+#define DEBUG_FLAG 0
 
 // Define the tasks
 void DS_TASK(void *pvParameters);   // DIP Switch Task
@@ -283,9 +283,6 @@ void DS_TASK(void *pvParameters) // This is a task.
           Serial.print(F("DS_TASK: Success sent value to DSQ! - "));
           Serial.println(DIPSW);
 #endif
-
-          // We sent our value, delay for next reading
-          vTaskDelay(pdMS_TO_TICKS(100));
         }
 
         else
@@ -294,19 +291,16 @@ void DS_TASK(void *pvParameters) // This is a task.
           Serial.print(F("DS_TASK: Failure sending value to DSQ! DSQ FULL! - "));
           Serial.println(DIPSW);
 #endif
-
-          // We didn't send our value, delay for next reading
-          vTaskDelay(pdMS_TO_TICKS(100));
         }
       }
-      else
-        // DSQ failure
-        vTaskDelay(pdMS_TO_TICKS(100));
     }
     // We don't have the semaphore
     else
-      vTaskDelay(pdMS_TO_TICKS(100));
-  }
+      taskYIELD();
+
+    // We delay for other tasks
+    vTaskDelay(pdMS_TO_TICKS(50));
+  } // End of for loop
 }
 
 void SM_TASK(void *pvParameters) // This is a task.
@@ -371,8 +365,6 @@ void SM_TASK(void *pvParameters) // This is a task.
           my_motor.setSpeed(-(sm.RPM * 2048) / 60);
           my_motor.moveTo(-2048);
         }
-
-        taskYIELD();
       } // End of receving from SMQ
       else
       {
@@ -387,13 +379,12 @@ void SM_TASK(void *pvParameters) // This is a task.
           my_motor.setSpeed(-(sm.RPM * 2048) / 60);
           my_motor.moveTo(-2048);
         }
-
-        taskYIELD();
       } // Tried receiving from SMQ, but failed
-    }   // Check SMQ for null
-    else
-      taskYIELD();
-  }
+    }   // ECheck SMQ for null
+
+    // Don't delay yield instead. This needs to run as often as possible
+    taskYIELD();
+  } // End of for loop
 }
 
 void HT_TASK(void *pvParameters) // This is a task.
@@ -435,9 +426,6 @@ void HT_TASK(void *pvParameters) // This is a task.
           Serial.print(" - ");
           Serial.println(HT_READINGS.temperature);
 #endif
-
-          // We sent our value, delay for next reading
-          vTaskDelay(pdMS_TO_TICKS(100));
         }
 
         else
@@ -448,18 +436,16 @@ void HT_TASK(void *pvParameters) // This is a task.
           Serial.print(" - ");
           Serial.println(HT_READINGS.temperature);
 #endif
-
-          // We didn't send our value, delay for next reading
-          vTaskDelay(pdMS_TO_TICKS(100));
         }
       }
-      else
-        // DSQ failure
-        vTaskDelay(pdMS_TO_TICKS(100));
-    }
+
+    } // We don't have the semaphore
     else
-      vTaskDelay(pdMS_TO_TICKS(100));
-  }
+      taskYIELD();
+
+    // We delay for other taks
+    vTaskDelay(pdMS_TO_TICKS(50));
+  } // End of for loop
 }
 
 void DR_TASK(void *pvParameters) // This is a task.
@@ -1075,18 +1061,31 @@ void DR_TASK(void *pvParameters) // This is a task.
           xSemaphoreGive(DP_SEMAPHORE);
         }
         else
-          vTaskDelay(pdMS_TO_TICKS(250));
+          taskYIELD();
 
-        vTaskDelay(pdMS_TO_TICKS(250));
       } // End of Receive from queue
       else
         // failed to get item out of queue.
-        vTaskDelay(pdMS_TO_TICKS(250));
-    }
+        taskYIELD();
+    } // End of check for null of all three queues
     else
       // Queue is full or something..
+      taskYIELD();
+
+    // Now we check for the special OVERFLOW value 0F\0
+    if ((display_arr[0] == '0') && (display_arr[1] == 'F'))
+    {
+      // We clear display_arr
+      sprintf(display_arr, "%02X", 0x0);
+      // We delay 5 seconds
+      vTaskDelay(pdMS_TO_TICKS(5000));
+      // We clear DRQ again
+      xQueueReset(DRQ);
+    }
+    else
       vTaskDelay(pdMS_TO_TICKS(250));
-  }
+
+  } // End of for loop
 }
 
 void DP_TASK(void *pvParameters) // This is a task.
@@ -1262,7 +1261,7 @@ void CONT_TASK(void *pvParameters)
   ht.temperature = 0;
 
   // Define the byte to hold DIP Switch values
-  byte DIPSW = 255;
+  byte DIPSW = 247;
 
   // Map valid DIP Switch inputs
   enum states
@@ -1299,7 +1298,7 @@ void CONT_TASK(void *pvParameters)
 #endif
 
         // If we get here, the DRQ is full. That means we are backed up.
-        // We clear the DRQ queue and put 0xOF of OVER FLOW, wait five seconds
+        // We clear the DRQ queue and put 0x0F (OVER FLOW)
         xQueueReset(DRQ);
         // Send number to DRQ
         sprintf(display_arr, "%02X", 0x0F);
@@ -1310,10 +1309,15 @@ void CONT_TASK(void *pvParameters)
           Serial.println(display_arr);
 #endif
         }
-        else // If we get here the DRQ is full!
+        else // If we get here the DRQ is full! Should't happen since we just cleared it, but just in case
           DIPSW = int(OVERLOAD);
 
-        vTaskDelay(pdMS_TO_TICKS(5000));
+#if DEBUG_FLAG
+        Serial.println(F("CONT_TASK: Giving semaphores - DS, HT"));
+#endif
+        // We give semaphores before we sleep
+        xSemaphoreGive(DS_SEMAPHORE);
+        xSemaphoreGive(HT_SEMAPHORE);
         break;
 
       case DPSW1_ON:
@@ -1373,6 +1377,12 @@ void CONT_TASK(void *pvParameters)
         else // If we get here the DRQ is full!
           DIPSW = int(OVERLOAD);
 
+#if DEBUG_FLAG
+        Serial.println(F("CONT_TASK: Giving semaphores - DS, HT"));
+#endif
+        // We give semaphores before we sleep
+        xSemaphoreGive(DS_SEMAPHORE);
+        xSemaphoreGive(HT_SEMAPHORE);
         break;
 
       case DPSW1_OFF:
@@ -1433,6 +1443,12 @@ void CONT_TASK(void *pvParameters)
         else // If we get here the DRQ is full!
           DIPSW = int(OVERLOAD);
 
+#if DEBUG_FLAG
+        Serial.println(F("CONT_TASK: Giving semaphores - DS, HT"));
+#endif
+        // We give semaphores before we sleep
+        xSemaphoreGive(DS_SEMAPHORE);
+        xSemaphoreGive(HT_SEMAPHORE);
         break;
 
       case DPSW2:
@@ -1466,6 +1482,12 @@ void CONT_TASK(void *pvParameters)
         else // If we get here the DRQ is full!
           DIPSW = int(OVERLOAD);
 
+#if DEBUG_FLAG
+        Serial.println(F("CONT_TASK: Giving semaphores - DS, HT"));
+#endif
+        // We give semaphores before we sleep
+        xSemaphoreGive(DS_SEMAPHORE);
+        xSemaphoreGive(HT_SEMAPHORE);
         break;
 
       case DPSW3:
@@ -1499,6 +1521,12 @@ void CONT_TASK(void *pvParameters)
         else // If we get here the DRQ is full!
           DIPSW = int(OVERLOAD);
 
+#if DEBUG_FLAG
+        Serial.println(F("CONT_TASK: Giving semaphores - DS, HT"));
+#endif
+        // We give semaphores before we sleep
+        xSemaphoreGive(DS_SEMAPHORE);
+        xSemaphoreGive(HT_SEMAPHORE);
         break;
 
       case DPSW4:
@@ -1522,6 +1550,8 @@ void CONT_TASK(void *pvParameters)
 #endif
         }
 
+        // clear DRQ
+        xQueueReset(DRQ);
         // Send number to DRQ
         sprintf(display_arr, "%02X", 0x00);
         if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
@@ -1534,6 +1564,12 @@ void CONT_TASK(void *pvParameters)
         else // If we get here the DRQ is full!
           DIPSW = int(OVERLOAD);
 
+#if DEBUG_FLAG
+        Serial.println(F("CONT_TASK: Giving semaphores - DS, HT"));
+#endif
+        // We give semaphores before we sleep
+        xSemaphoreGive(DS_SEMAPHORE);
+        xSemaphoreGive(HT_SEMAPHORE);
         break;
 
       case DPSW2and3:
@@ -1603,6 +1639,12 @@ void CONT_TASK(void *pvParameters)
             DIPSW = int(OVERLOAD);
         }
 
+#if DEBUG_FLAG
+        Serial.println(F("CONT_TASK: Giving semaphores - DS, HT"));
+#endif
+        // We give the semaphores so we do something while we sleep
+        xSemaphoreGive(DS_SEMAPHORE);
+        xSemaphoreGive(HT_SEMAPHORE);
         // We delay 4 seconds to allow for a full rotation
         vTaskDelay(pdMS_TO_TICKS(4000));
 
@@ -1624,6 +1666,12 @@ void CONT_TASK(void *pvParameters)
 #endif
         }
 
+#if DEBUG_FLAG
+        Serial.println(F("CONT_TASK: Giving semaphores - DS, HT"));
+#endif
+        // We give semaphores before we sleep
+        xSemaphoreGive(DS_SEMAPHORE);
+        xSemaphoreGive(HT_SEMAPHORE);
         break;
       } // End of switch statement
 
@@ -1649,11 +1697,12 @@ void CONT_TASK(void *pvParameters)
 #endif
         xSemaphoreGive(DS_SEMAPHORE);
         xSemaphoreGive(HT_SEMAPHORE);
-        // Delay for other tasks
-        vTaskDelay(pdMS_TO_TICKS(500));
       }
     }
-  }
+
+    // Delay for other tasks
+    vTaskDelay(pdMS_TO_TICKS(425));
+  } // End of for loop
 }
 void loop()
 {
