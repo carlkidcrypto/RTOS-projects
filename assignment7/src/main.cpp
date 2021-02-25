@@ -1666,6 +1666,16 @@ void CONT_TASK(void *pvParameters)
 #endif
         }
 
+        if (xQueueSendToBack(DRQ, &display_arr, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("CONT_TASK: Success sending to DRQ - "));
+          Serial.println(display_arr);
+#endif
+        }
+        else // If we get here the DRQ is full!
+          DIPSW = int(OVERLOAD);
+
 #if DEBUG_FLAG
         Serial.println(F("CONT_TASK: Giving semaphores - DS, HT"));
 #endif
@@ -1701,7 +1711,7 @@ void CONT_TASK(void *pvParameters)
     }
 
     // Delay for other tasks
-    vTaskDelay(pdMS_TO_TICKS(425));
+    vTaskDelay(pdMS_TO_TICKS(350));
   } // End of for loop
 }
 void loop()
