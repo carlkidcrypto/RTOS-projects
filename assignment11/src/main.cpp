@@ -426,7 +426,7 @@ void DS_TASK(void *pvParameters) // This is a task.
     }
   
   // We delay for other taks
-  vTaskDelay(pdMS_TO_TICKS(250));
+  vTaskDelay(pdMS_TO_TICKS(100));
   } // End of for loop
 }
 
@@ -569,7 +569,7 @@ void HT_TASK(void *pvParameters) // This is a task.
     }
 
     // We delay for other taks
-    vTaskDelay(pdMS_TO_TICKS(250));
+    vTaskDelay(pdMS_TO_TICKS(100));
   } // End of for loop
 }
 
@@ -1271,6 +1271,11 @@ void DR_TASK(void *pvParameters) // This is a task.
 
 void CONT_TASK(void *pvParameters)
 {
+  // Vars to keep track of time
+  unsigned long prev_milli = 0;
+  unsigned long curr_milli = 0;
+  unsigned long time_diff = 0;
+
   // Define char array for display
   char display_arr[3];
   sprintf(display_arr, "%02X", 0);
@@ -1554,6 +1559,8 @@ void CONT_TASK(void *pvParameters)
         neopixel.four.rgbw.green = 0;
         neopixel.four.rgbw.white = 0;
 
+        neopixel.rainbow_mode = false;
+
         // Send to NPQ
         if (xQueueSendToBack(NPQ, &neopixel, (TickType_t)0) == pdTRUE)
         {
@@ -1787,7 +1794,37 @@ void CONT_TASK(void *pvParameters)
         // Note it takes about ~4 seconds to do 1 full reolution @ 15 rpm
         // do one Clockwise revolution at max speed
         sm.RPM = 15;
-        sm.forward = !sm.forward; // toggle the current bool value
+
+        // Check if 4 seconds have elasped to change the direction
+        curr_milli = millis();
+        time_diff = curr_milli - prev_milli;
+
+        // 4000 milliseconds is 4 seconds
+        if(time_diff >= 4000)
+        {
+          sm.forward = !sm.forward; // toggle the current bool value
+          prev_milli = curr_milli;
+        }
+        // If our time_diff is neg our milli func has rolled over to 0
+        else if (time_diff < 0)
+        {
+          // max value of unsigned long: 2^32 - 1, https://www.arduino.cc/reference/en/language/functions/time/millis/
+          // that's about 50 days or so...
+          unsigned long max_milli = (unsigned long) (pow(2, 32) - 1);
+
+          // Here prev_milli should be a time before roll over
+          time_diff = (max_milli - prev_milli) + curr_milli;
+          if(time_diff >= 4000)
+            {
+              sm.forward = !sm.forward; // toggle the current bool value
+              prev_milli = curr_milli;
+            }
+        }
+        else
+        {
+          // Do nothing
+        }
+          
 
         if (sm.forward == true)
         {
@@ -1879,11 +1916,9 @@ void CONT_TASK(void *pvParameters)
 #if DEBUG_FLAG
         Serial.println(F("CONT_TASK: Giving semaphores - DS, HT"));
 #endif
-        // We give the semaphores so we do something while we sleep
+        // We give the semaphores
         xSemaphoreGive(DS_SEMAPHORE);
         xSemaphoreGive(HT_SEMAPHORE);
-        // We delay 4 seconds to allow for a full rotation
-        vTaskDelay(pdMS_TO_TICKS(4000));
 
         break;
 
@@ -1947,7 +1982,7 @@ void CONT_TASK(void *pvParameters)
     }
 
     // Delay for other tasks
-    vTaskDelay(pdMS_TO_TICKS(350));
+    vTaskDelay(pdMS_TO_TICKS(250));
   } // End of for loop
 }
 void loop()
