@@ -61,19 +61,24 @@ void setup()
     double temperature;
   };
 
-  // Define the NepPixel struct
+  // Define the NeoPixel struct
   struct NeoPixel
   {
-    struct RGBW
+    struct PIXEL
     {
-      byte red;
-      byte green;
-      byte blue;
-      byte white;
+      struct RGBW
+      {
+        // Note: the value set for each color is also the brightness level. 255 max, 0 off
+        byte red;
+        byte green;
+        byte blue;
+        byte white;
+      };
+      RGBW rgbw;
     };
-    RGBW rgbw;
-    byte brightness;
-    bool rainbow;
+    PIXEL one, two, three, four;
+
+    bool rainbow_mode;
   };
 
   DRQ = xQueueCreate(10, sizeof(display_arr));
@@ -241,133 +246,117 @@ void NP_TASK(void *pvParameters)
       177, 180, 182, 184, 186, 189, 191, 193, 196, 198, 200, 203, 205, 208, 210, 213,
       215, 218, 220, 223, 225, 228, 231, 233, 236, 239, 241, 244, 247, 249, 252, 255};
 
-  // Define the NepPixel struct
+  // Define the NeoPixel struct
   struct NeoPixel
   {
-    struct RGBW
+    struct PIXEL
     {
-      byte red;
-      byte green;
-      byte blue;
-      byte white;
+      struct RGBW
+      {
+        // Note: the value set for each color is also the brightness level. 255 max, 0 off
+        byte red;
+        byte green;
+        byte blue;
+        byte white;
+      };
+      RGBW rgbw;
     };
-    RGBW rgbw;
-    byte brightness;
-    bool rainbow;
+    PIXEL one, two, three, four;
+
+    bool rainbow_mode;
   };
 
   NeoPixel neopixel;
-  neopixel.brightness = 0;
-  neopixel.rgbw.red = 0;
-  neopixel.rgbw.green = 0;
-  neopixel.rgbw.blue = 0;
-  neopixel.rgbw.white = 0;
-  neopixel.rainbow = false;
+  // Set NeoPixels Color & brightness
+  neopixel.one.rgbw.red = 0;
+  neopixel.one.rgbw.blue = 0;
+  neopixel.one.rgbw.green = 0;
+  neopixel.one.rgbw.white = 0;
 
-  strip.setBrightness(neopixel.brightness);
+  neopixel.two.rgbw.red = 0;
+  neopixel.two.rgbw.blue = 0;
+  neopixel.two.rgbw.green = 0;
+  neopixel.two.rgbw.white = 0;
+
+  neopixel.three.rgbw.red = 0;
+  neopixel.three.rgbw.blue = 0;
+  neopixel.three.rgbw.green = 0;
+  neopixel.three.rgbw.white = 0;
+
+  neopixel.four.rgbw.red = 0;
+  neopixel.four.rgbw.blue = 0;
+  neopixel.four.rgbw.green = 0;
+  neopixel.four.rgbw.white = 0;
+
+  neopixel.rainbow_mode = false;
+  // Initialize all pixels to 'off'
+  strip.setBrightness(0); // This func set brightness for all pixels
   strip.begin();
-  strip.show(); // Initialize all pixels to 'off'
+  strip.show();
 
   for (;;)
   {
+    strip.show();
+
     // Check the NPQ
     if (NPQ != NULL)
     {
       if (xQueueReceive(NPQ, &neopixel, (TickType_t)0) == pdTRUE)
       {
-        if (neopixel.rainbow == true)
-        {
-          // Do the ranbow effect thing instead
-          strip.setBrightness(neopixel.brightness);
-          for (uint16_t i = 0; i < strip.numPixels(); i++)
-          {
-            strip.setPixelColor(i, strip.Color(255,0,0,0));
-            strip.show();
-            vTaskDelay(pdMS_TO_TICKS(25));
-          }
-          
-          for (uint16_t i = 0; i < strip.numPixels(); i++)
-          {
-            strip.setPixelColor(i, strip.Color(0,255,0,0));
-            strip.show();
-            vTaskDelay(pdMS_TO_TICKS(25));
-          }
-
-          for (uint16_t i = 0; i < strip.numPixels(); i++)
-          {
-            strip.setPixelColor(i, strip.Color(0,0,255,0));
-            strip.show();
-            vTaskDelay(pdMS_TO_TICKS(25));
-          }
-
-          for (uint16_t i = 0; i < strip.numPixels(); i++)
-          {
-            strip.setPixelColor(i, strip.Color(0,0,0,255));
-            strip.show();
-            vTaskDelay(pdMS_TO_TICKS(25));
-          }
-
-        }
-        else{
-          strip.setBrightness(neopixel.brightness);
-          for (uint16_t i = 0; i < strip.numPixels(); i++)
-          {
-            strip.setPixelColor(i, strip.Color(neopixel.rgbw.red, neopixel.rgbw.green, neopixel.rgbw.blue, neopixel.rgbw.white));
-            strip.show();
-            vTaskDelay(pdMS_TO_TICKS(25));
-          }
-
-        } 
+        // we got something yay!
       }
-      else
+    } // End check f or NPQ null
+
+    // Do the NeoPixel Magic
+    if (neopixel.rainbow_mode == true)
+    {
+      // Do the ranbow effect thing instead, set brightness for all pixels
+      strip.setBrightness(20);
+      for (uint16_t i = 0; i < strip.numPixels(); i++)
       {
-        if (neopixel.rainbow == true)
-        {
-           // Do the ranbow effect thing instead
-          strip.setBrightness(neopixel.brightness);
-          for (uint16_t i = 0; i < strip.numPixels(); i++)
-          {
-            strip.setPixelColor(i, strip.Color(255,0,0,0));
-            strip.show();
-            vTaskDelay(pdMS_TO_TICKS(25));
-          }
-          
-          for (uint16_t i = 0; i < strip.numPixels(); i++)
-          {
-            strip.setPixelColor(i, strip.Color(0,255,0,0));
-            strip.show();
-            vTaskDelay(pdMS_TO_TICKS(25));
-          }
+        strip.setPixelColor(i, strip.Color(20, 0, 0, 0));
+        strip.show();
+        vTaskDelay(pdMS_TO_TICKS(25));
+      }
 
-          for (uint16_t i = 0; i < strip.numPixels(); i++)
-          {
-            strip.setPixelColor(i, strip.Color(0,0,255,0));
-            strip.show();
-            vTaskDelay(pdMS_TO_TICKS(25));
-          }
+      for (uint16_t i = 0; i < strip.numPixels(); i++)
+      {
+        strip.setPixelColor(i, strip.Color(0, 20, 0, 0));
+        strip.show();
+        vTaskDelay(pdMS_TO_TICKS(25));
+      }
 
-          for (uint16_t i = 0; i < strip.numPixels(); i++)
-          {
-            strip.setPixelColor(i, strip.Color(0,0,0,255));
-            strip.show();
-            vTaskDelay(pdMS_TO_TICKS(25));
-          }
-        }
-        else
-        {
-          strip.setBrightness(neopixel.brightness);
-          for (uint16_t i = 0; i < strip.numPixels(); i++)
-          {
-            strip.setPixelColor(i, strip.Color(neopixel.rgbw.red, neopixel.rgbw.green, neopixel.rgbw.blue, neopixel.rgbw.white));
-            strip.show();
-            vTaskDelay(pdMS_TO_TICKS(25));
-          }
-        }
+      for (uint16_t i = 0; i < strip.numPixels(); i++)
+      {
+        strip.setPixelColor(i, strip.Color(0, 0, 20, 0));
+        strip.show();
+        vTaskDelay(pdMS_TO_TICKS(25));
+      }
+
+      for (uint16_t i = 0; i < strip.numPixels(); i++)
+      {
+        strip.setPixelColor(i, strip.Color(0, 0, 0, 20));
+        strip.show();
+        vTaskDelay(pdMS_TO_TICKS(25));
       }
     }
+    else // The rainbow var is not set
+    {
+      // Set each individual pixel
+      strip.setPixelColor(0, strip.Color(neopixel.one.rgbw.red, neopixel.one.rgbw.green, neopixel.one.rgbw.blue, neopixel.one.rgbw.white));
+      strip.show();
+      strip.setPixelColor(1, strip.Color(neopixel.two.rgbw.red, neopixel.two.rgbw.green, neopixel.two.rgbw.blue, neopixel.two.rgbw.white));
+      strip.show();
+      strip.setPixelColor(2, strip.Color(neopixel.three.rgbw.red, neopixel.three.rgbw.green, neopixel.three.rgbw.blue, neopixel.three.rgbw.white));
+      strip.show();
+      strip.setPixelColor(3, strip.Color(neopixel.four.rgbw.red, neopixel.four.rgbw.green, neopixel.four.rgbw.blue, neopixel.four.rgbw.white));
+      strip.show();
+      vTaskDelay(pdMS_TO_TICKS(25));
+    }
 
+    // Yield for other tasks, we need to run as often as we can
     taskYIELD();
-  }
+  } // End of for loop
 }
 
 void DS_TASK(void *pvParameters) // This is a task.
@@ -394,14 +383,12 @@ void DS_TASK(void *pvParameters) // This is a task.
 
   for (;;)
   {
-
-    // Check for the semaphore, is it there
+    // Lets read the DIP Switch into a byte. bits are read from right to left, 7-0
+    byte DIPSW = (digitalRead(DIP7) << 7) | (digitalRead(DIP6) << 6) | (digitalRead(DIP5) << 5) | (digitalRead(DIP4) << 4) | (digitalRead(DIP3) << 3) | (digitalRead(DIP2) << 2) | (digitalRead(DIP1) << 1) | (digitalRead(DIP0));
+    
+    // Do we have the semaphore
     if (xSemaphoreTake(DS_SEMAPHORE, 0) == pdTRUE)
     {
-
-      // Lets read the DIP Switch into a byte. bits are read from right to left, 7-0
-      byte DIPSW = (digitalRead(DIP7) << 7) | (digitalRead(DIP6) << 6) | (digitalRead(DIP5) << 5) | (digitalRead(DIP4) << 4) | (digitalRead(DIP3) << 3) | (digitalRead(DIP2) << 2) | (digitalRead(DIP1) << 1) | (digitalRead(DIP0));
-
 #if DEBUG_FLAG
       // Note: Our DIP switch shows value 1 for off, value 0 for on
       Serial.print(F("DS_TASK: DIP Switch Reading: "));
@@ -440,9 +427,9 @@ void DS_TASK(void *pvParameters) // This is a task.
     // We don't have the semaphore
     else
       taskYIELD();
-
-    // We delay for other tasks
-    vTaskDelay(pdMS_TO_TICKS(50));
+  
+  // We delay for other taks
+  vTaskDelay(pdMS_TO_TICKS(50));
   } // End of for loop
 }
 
@@ -523,7 +510,7 @@ void SM_TASK(void *pvParameters) // This is a task.
           my_motor.moveTo(-2048);
         }
       } // Tried receiving from SMQ, but failed
-    }   // ECheck SMQ for null
+    }   //End of check SMQ for null
 
     // Don't delay yield instead. This needs to run as often as possible
     taskYIELD();
@@ -551,13 +538,13 @@ void HT_TASK(void *pvParameters) // This is a task.
 
   for (;;)
   {
-    // Check for the semaphore, is it there
+    // get the humi/temp values
+    HT_READINGS.temperature = hdc1080.readTemperature();
+    HT_READINGS.humidity = hdc1080.readHumidity();
+
+    // Do we have the semaphore
     if (xSemaphoreTake(HT_SEMAPHORE, 0) == pdTRUE)
     {
-      // get the humi/temp values
-      HT_READINGS.temperature = hdc1080.readTemperature();
-      HT_READINGS.humidity = hdc1080.readHumidity();
-
       // Send read value to HTQ
       if (HTQ != NULL)
       {
@@ -1343,28 +1330,49 @@ void CONT_TASK(void *pvParameters)
   // init FSM
   FSM = states(DIPSW);
 
-  // Define the NepPixel struct
+  // Define the NeoPixel struct
   struct NeoPixel
   {
-    struct RGBW
+    struct PIXEL
     {
-      byte red;
-      byte green;
-      byte blue;
-      byte white;
+      struct RGBW
+      {
+        // Note: the value set for each color is also the brightness level. 255 max, 0 off
+        byte red;
+        byte green;
+        byte blue;
+        byte white;
+      };
+      RGBW rgbw;
     };
-    RGBW rgbw;
-    byte brightness;
-    bool rainbow;
+    PIXEL one, two, three, four;
+
+    bool rainbow_mode;
   };
 
   NeoPixel neopixel;
-  neopixel.rainbow = false;
-  neopixel.brightness = 0;
-  neopixel.rgbw.red = 0;
-  neopixel.rgbw.green = 0;
-  neopixel.rgbw.blue = 0;
-  neopixel.rgbw.white = 0;
+  // Set NeoPixels Color & brightness
+  neopixel.one.rgbw.red = 0;
+  neopixel.one.rgbw.blue = 0;
+  neopixel.one.rgbw.green = 0;
+  neopixel.one.rgbw.white = 0;
+
+  neopixel.two.rgbw.red = 0;
+  neopixel.two.rgbw.blue = 0;
+  neopixel.two.rgbw.green = 0;
+  neopixel.two.rgbw.white = 0;
+
+  neopixel.three.rgbw.red = 0;
+  neopixel.three.rgbw.blue = 0;
+  neopixel.three.rgbw.green = 0;
+  neopixel.three.rgbw.white = 0;
+
+  neopixel.four.rgbw.red = 0;
+  neopixel.four.rgbw.blue = 0;
+  neopixel.four.rgbw.green = 0;
+  neopixel.four.rgbw.white = 0;
+
+  neopixel.rainbow_mode = false;
 
   for (;;)
   {
@@ -1451,24 +1459,34 @@ void CONT_TASK(void *pvParameters)
         else // If we get here the DRQ is full!
           DIPSW = int(OVERLOAD);
 
-        // Set NeoPixel Commands
-        neopixel.rainbow = false;
-        neopixel.brightness = int8_t(ht.humidity);
-        neopixel.rgbw.red = 0;
-        neopixel.rgbw.green = 0;
-        neopixel.rgbw.blue = 255;
-        neopixel.rgbw.white = 0;
+        // Set NeoPixels Color & brightness
+        neopixel.one.rgbw.red = 0;
+        neopixel.one.rgbw.blue = int8_t(ht.humidity);
+        neopixel.one.rgbw.green = 0;
+        neopixel.one.rgbw.white = 0;
+
+        neopixel.two.rgbw.red = 0;
+        neopixel.two.rgbw.blue = 0;
+        neopixel.two.rgbw.green = 0;
+        neopixel.two.rgbw.white = 0;
+
+        neopixel.three.rgbw.red = 0;
+        neopixel.three.rgbw.blue = 0;
+        neopixel.three.rgbw.green = 0;
+        neopixel.three.rgbw.white = 0;
+
+        neopixel.four.rgbw.red = 0;
+        neopixel.four.rgbw.blue = 0;
+        neopixel.four.rgbw.green = 0;
+        neopixel.four.rgbw.white = 0;
+
+        neopixel.rainbow_mode = false;
 
         // Send to NPQ
         if (xQueueSendToBack(NPQ, &neopixel, (TickType_t)0) == pdTRUE)
         {
 #if DEBUG_FLAG
           Serial.print(F("CONT_TASK: Success sending to NPQ - "));
-          Serial.print(neopixel.color);
-          Serial.print(F(" "));
-          Serial.println(neopixel.brightness);
-          Serial.print(F(" "));
-          Serial.println(neopixel.rainbow);
 #endif
         }
 
@@ -1526,24 +1544,32 @@ void CONT_TASK(void *pvParameters)
         else // If we get here the DRQ is full!
           DIPSW = int(OVERLOAD);
 
-        // Set NeoPixel Commands
-        neopixel.rainbow = false;
-        neopixel.brightness = int8_t(ht.temperature);
-        neopixel.rgbw.red = 255;
-        neopixel.rgbw.green = 0;
-        neopixel.rgbw.blue = 0;
-        neopixel.rgbw.white = 0;
+        // Set NeoPixels Color & brightness
+        neopixel.one.rgbw.red = 0;
+        neopixel.one.rgbw.blue = 0;
+        neopixel.one.rgbw.green = 0;
+        neopixel.one.rgbw.white = 0;
+
+        neopixel.two.rgbw.red = int8_t(ht.temperature);
+        neopixel.two.rgbw.blue = 0;
+        neopixel.two.rgbw.green = 0;
+        neopixel.two.rgbw.white = 0;
+
+        neopixel.three.rgbw.red = 0;
+        neopixel.three.rgbw.blue = 0;
+        neopixel.three.rgbw.green = 0;
+        neopixel.three.rgbw.white = 0;
+
+        neopixel.four.rgbw.red = 0;
+        neopixel.four.rgbw.blue = 0;
+        neopixel.four.rgbw.green = 0;
+        neopixel.four.rgbw.white = 0;
 
         // Send to NPQ
         if (xQueueSendToBack(NPQ, &neopixel, (TickType_t)0) == pdTRUE)
         {
 #if DEBUG_FLAG
           Serial.print(F("CONT_TASK: Success sending to NPQ - "));
-          Serial.print(neopixel.color);
-          Serial.print(F(" "));
-          Serial.println(neopixel.brightness);
-          Serial.print(F(" "));
-          Serial.println(neopixel.rainbow);
 #endif
         }
 
@@ -1586,24 +1612,32 @@ void CONT_TASK(void *pvParameters)
         else // If we get here the DRQ is full!
           DIPSW = int(OVERLOAD);
 
-        // Set NeoPixel Commands
-        neopixel.rainbow = false;
-        neopixel.brightness = 25;
-        neopixel.rgbw.red = 0;
-        neopixel.rgbw.green = 255;
-        neopixel.rgbw.blue = 0;
-        neopixel.rgbw.white = 0;
+        // Set NeoPixels Color & brightness
+        neopixel.one.rgbw.red = 0;
+        neopixel.one.rgbw.blue = 0;
+        neopixel.one.rgbw.green = 0;
+        neopixel.one.rgbw.white = 0;
+
+        neopixel.two.rgbw.red = 0;
+        neopixel.two.rgbw.blue = 0;
+        neopixel.two.rgbw.green = 0;
+        neopixel.two.rgbw.white = 0;
+
+        neopixel.three.rgbw.red = 0;
+        neopixel.three.rgbw.blue = 0;
+        neopixel.three.rgbw.green = 20;
+        neopixel.three.rgbw.white = 0;
+
+        neopixel.four.rgbw.red = 0;
+        neopixel.four.rgbw.blue = 0;
+        neopixel.four.rgbw.green = 0;
+        neopixel.four.rgbw.white = 0;
 
         // Send to NPQ
         if (xQueueSendToBack(NPQ, &neopixel, (TickType_t)0) == pdTRUE)
         {
 #if DEBUG_FLAG
           Serial.print(F("CONT_TASK: Success sending to NPQ - "));
-          Serial.print(neopixel.color);
-          Serial.print(F(" "));
-          Serial.println(neopixel.brightness);
-          Serial.print(F(" "));
-          Serial.println(neopixel.rainbow);
 #endif
         }
 
@@ -1646,24 +1680,32 @@ void CONT_TASK(void *pvParameters)
         else // If we get here the DRQ is full!
           DIPSW = int(OVERLOAD);
 
-        // Set NeoPixel Commands
-        neopixel.rainbow = false;
-        neopixel.brightness = 10;
-        neopixel.rgbw.red = 0;
-        neopixel.rgbw.green = 0;
-        neopixel.rgbw.blue = 0;
-        neopixel.rgbw.white = 255;
+        // Set NeoPixels Color & brightness
+        neopixel.one.rgbw.red = 0;
+        neopixel.one.rgbw.blue = 0;
+        neopixel.one.rgbw.green = 0;
+        neopixel.one.rgbw.white = 0;
+
+        neopixel.two.rgbw.red = 0;
+        neopixel.two.rgbw.blue = 0;
+        neopixel.two.rgbw.green = 0;
+        neopixel.two.rgbw.white = 0;
+
+        neopixel.three.rgbw.red = 0;
+        neopixel.three.rgbw.blue = 0;
+        neopixel.three.rgbw.green = 0;
+        neopixel.three.rgbw.white = 0;
+
+        neopixel.four.rgbw.red = 0;
+        neopixel.four.rgbw.blue = 0;
+        neopixel.four.rgbw.green = 0;
+        neopixel.four.rgbw.white = 20;
 
         // Send to NPQ
         if (xQueueSendToBack(NPQ, &neopixel, (TickType_t)0) == pdTRUE)
         {
 #if DEBUG_FLAG
           Serial.print(F("CONT_TASK: Success sending to NPQ - "));
-          Serial.print(neopixel.color);
-          Serial.print(F(" "));
-          Serial.println(neopixel.brightness);
-          Serial.print(F(" "));
-          Serial.println(neopixel.rainbow);
 #endif
         }
 
@@ -1710,24 +1752,32 @@ void CONT_TASK(void *pvParameters)
         else // If we get here the DRQ is full!
           DIPSW = int(OVERLOAD);
 
-        // Set NeoPixel Commands
-        neopixel.rainbow = false;
-        neopixel.brightness = 0;
-        neopixel.rgbw.red = 0;
-        neopixel.rgbw.green = 0;
-        neopixel.rgbw.blue = 0;
-        neopixel.rgbw.white = 0;
+        // Set NeoPixels Color & brightness
+        neopixel.one.rgbw.red = 20;
+        neopixel.one.rgbw.blue = 0;
+        neopixel.one.rgbw.green = 0;
+        neopixel.one.rgbw.white = 0;
+
+        neopixel.two.rgbw.red = 0;
+        neopixel.two.rgbw.blue = 20;
+        neopixel.two.rgbw.green = 0;
+        neopixel.two.rgbw.white = 0;
+
+        neopixel.three.rgbw.red = 0;
+        neopixel.three.rgbw.blue = 0;
+        neopixel.three.rgbw.green = 20;
+        neopixel.three.rgbw.white = 0;
+
+        neopixel.four.rgbw.red = 0;
+        neopixel.four.rgbw.blue = 0;
+        neopixel.four.rgbw.green = 0;
+        neopixel.four.rgbw.white = 20;
 
         // Send to NPQ
         if (xQueueSendToBack(NPQ, &neopixel, (TickType_t)0) == pdTRUE)
         {
 #if DEBUG_FLAG
           Serial.print(F("CONT_TASK: Success sending to NPQ - "));
-          Serial.print(neopixel.color);
-          Serial.print(F(" "));
-          Serial.println(neopixel.brightness);
-          Serial.print(F(" "));
-          Serial.println(neopixel.rainbow);
 #endif
         }
 
@@ -1806,24 +1856,34 @@ void CONT_TASK(void *pvParameters)
             DIPSW = int(OVERLOAD);
         }
 
-        // Set NeoPixel Commands
-        neopixel.rainbow = true;
-        neopixel.brightness = 25;
-        neopixel.rgbw.red = 0;
-        neopixel.rgbw.green = 0;
-        neopixel.rgbw.blue = 0;
-        neopixel.rgbw.white = 0;
+        // Set NeoPixels Color & brightness
+        neopixel.one.rgbw.red = 0;
+        neopixel.one.rgbw.blue = 0;
+        neopixel.one.rgbw.green = 0;
+        neopixel.one.rgbw.white = 0;
+
+        neopixel.two.rgbw.red = 0;
+        neopixel.two.rgbw.blue = 0;
+        neopixel.two.rgbw.green = 0;
+        neopixel.two.rgbw.white = 0;
+
+        neopixel.three.rgbw.red = 0;
+        neopixel.three.rgbw.blue = 0;
+        neopixel.three.rgbw.green = 0;
+        neopixel.three.rgbw.white = 0;
+
+        neopixel.four.rgbw.red = 0;
+        neopixel.four.rgbw.blue = 0;
+        neopixel.four.rgbw.green = 0;
+        neopixel.four.rgbw.white = 0;
+
+        neopixel.rainbow_mode = true;
 
         // Send to NPQ
         if (xQueueSendToBack(NPQ, &neopixel, (TickType_t)0) == pdTRUE)
         {
 #if DEBUG_FLAG
           Serial.print(F("CONT_TASK: Success sending to NPQ - "));
-          Serial.print(neopixel.color);
-          Serial.print(F(" "));
-          Serial.println(neopixel.brightness);
-          Serial.print(F(" "));
-          Serial.println(neopixel.rainbow);
 #endif
         }
 
