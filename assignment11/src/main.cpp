@@ -289,8 +289,8 @@ void NP_TASK(void *pvParameters)
   neopixel.four.rgbw.white = 0;
 
   neopixel.rainbow_mode = false;
-  // Initialize all pixels to 'off'
-  strip.setBrightness(0); // This func set brightness for all pixels
+  // Initialize all pixels to 'on'
+  strip.setBrightness(20); // This func set brightness for all pixels
   strip.begin();
   strip.show();
 
@@ -355,7 +355,7 @@ void NP_TASK(void *pvParameters)
     }
 
     // Yield for other tasks, we need to run as often as we can
-    taskYIELD();
+    vTaskDelay(pdMS_TO_TICKS(1));
   } // End of for loop
 }
 
@@ -424,12 +424,9 @@ void DS_TASK(void *pvParameters) // This is a task.
         }
       }
     }
-    // We don't have the semaphore
-    else
-      taskYIELD();
   
   // We delay for other taks
-  vTaskDelay(pdMS_TO_TICKS(50));
+  vTaskDelay(pdMS_TO_TICKS(250));
   } // End of for loop
 }
 
@@ -513,7 +510,7 @@ void SM_TASK(void *pvParameters) // This is a task.
     }   //End of check SMQ for null
 
     // Don't delay yield instead. This needs to run as often as possible
-    taskYIELD();
+    vTaskDelay(pdMS_TO_TICKS(1));
   } // End of for loop
 }
 
@@ -569,12 +566,10 @@ void HT_TASK(void *pvParameters) // This is a task.
         }
       }
 
-    } // We don't have the semaphore
-    else
-      taskYIELD();
+    }
 
     // We delay for other taks
-    vTaskDelay(pdMS_TO_TICKS(50));
+    vTaskDelay(pdMS_TO_TICKS(250));
   } // End of for loop
 }
 
@@ -1257,13 +1252,7 @@ void DR_TASK(void *pvParameters) // This is a task.
         }
 
       } // End of Receive from queue
-      else
-        // No new items. Yield for other tasks
-        taskYIELD();
     } // End of check for null
-    else
-      // Queue is full or something..
-      taskYIELD();
 
     // Now we check for the special OVERFLOW value 0F\0
     if ((display_arr[0] == '0') && (display_arr[1] == 'F'))
@@ -1275,8 +1264,8 @@ void DR_TASK(void *pvParameters) // This is a task.
       // We clear DRQ again
       xQueueReset(DRQ);
     }
-    else
-      taskYIELD();
+
+  vTaskDelay(pdMS_TO_TICKS(1));
   } // End of for loop
 }
 
@@ -1945,7 +1934,6 @@ void CONT_TASK(void *pvParameters)
         Serial.print(F(" "));
         Serial.println(ht.humidity);
 #endif
-        taskYIELD();
       } // End of XQueueReceive
       // We couldn't grab fresh data so request it
       else
