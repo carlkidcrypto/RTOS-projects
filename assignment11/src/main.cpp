@@ -228,24 +228,6 @@ void NP_TASK(void *pvParameters)
 
   Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, PIN, NEO_GRBW + NEO_KHZ800);
 
-  byte neopix_gamma[] = {
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1,
-      1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2,
-      2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5,
-      5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10,
-      10, 10, 11, 11, 11, 12, 12, 13, 13, 13, 14, 14, 15, 15, 16, 16,
-      17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 24, 24, 25,
-      25, 26, 27, 27, 28, 29, 29, 30, 31, 32, 32, 33, 34, 35, 35, 36,
-      37, 38, 39, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 50,
-      51, 52, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 66, 67, 68,
-      69, 70, 72, 73, 74, 75, 77, 78, 79, 81, 82, 83, 85, 86, 87, 89,
-      90, 92, 93, 95, 96, 98, 99, 101, 102, 104, 105, 107, 109, 110, 112, 114,
-      115, 117, 119, 120, 122, 124, 126, 127, 129, 131, 133, 135, 137, 138, 140, 142,
-      144, 146, 148, 150, 152, 154, 156, 158, 160, 162, 164, 167, 169, 171, 173, 175,
-      177, 180, 182, 184, 186, 189, 191, 193, 196, 198, 200, 203, 205, 208, 210, 213,
-      215, 218, 220, 223, 225, 228, 231, 233, 236, 239, 241, 244, 247, 249, 252, 255};
-
   // Define the NeoPixel struct
   struct NeoPixel
   {
@@ -385,7 +367,7 @@ void DS_TASK(void *pvParameters) // This is a task.
   {
     // Lets read the DIP Switch into a byte. bits are read from right to left, 7-0
     byte DIPSW = (digitalRead(DIP7) << 7) | (digitalRead(DIP6) << 6) | (digitalRead(DIP5) << 5) | (digitalRead(DIP4) << 4) | (digitalRead(DIP3) << 3) | (digitalRead(DIP2) << 2) | (digitalRead(DIP1) << 1) | (digitalRead(DIP0));
-    
+
     // Do we have the semaphore
     if (xSemaphoreTake(DS_SEMAPHORE, 0) == pdTRUE)
     {
@@ -424,9 +406,9 @@ void DS_TASK(void *pvParameters) // This is a task.
         }
       }
     }
-  
-  // We delay for other taks
-  vTaskDelay(pdMS_TO_TICKS(100));
+
+    // We delay for other taks
+    vTaskDelay(pdMS_TO_TICKS(100));
   } // End of for loop
 }
 
@@ -565,7 +547,6 @@ void HT_TASK(void *pvParameters) // This is a task.
 #endif
         }
       }
-
     }
 
     // We delay for other taks
@@ -675,6 +656,7 @@ void DR_TASK(void *pvParameters) // This is a task.
     /* ----- BEGIN: CHECK AND UPDATE LEFT,RIGHT Queues -----*/
     if ((DRQ != NULL))
     {
+
       if (xQueueReceive(DRQ, &display_arr, (TickType_t)0) == pdPASS)
       {
 #if DEBUG_FLAG
@@ -1252,7 +1234,7 @@ void DR_TASK(void *pvParameters) // This is a task.
         }
 
       } // End of Receive from queue
-    } // End of check for null
+    }   // End of check for null
 
     // Now we check for the special OVERFLOW value 0F\0
     if ((display_arr[0] == '0') && (display_arr[1] == 'F'))
@@ -1265,7 +1247,7 @@ void DR_TASK(void *pvParameters) // This is a task.
       xQueueReset(DRQ);
     }
 
-  vTaskDelay(pdMS_TO_TICKS(1));
+    vTaskDelay(pdMS_TO_TICKS(1));
   } // End of for loop
 }
 
@@ -1799,8 +1781,8 @@ void CONT_TASK(void *pvParameters)
         curr_milli = millis();
         time_diff = curr_milli - prev_milli;
 
-        // 4000 milliseconds is 4 seconds
-        if(time_diff >= 4000)
+        // 5500 milliseconds is 5.5 seconds
+        if (time_diff >= 5500)
         {
           sm.forward = !sm.forward; // toggle the current bool value
           prev_milli = curr_milli;
@@ -1810,21 +1792,20 @@ void CONT_TASK(void *pvParameters)
         {
           // max value of unsigned long: 2^32 - 1, https://www.arduino.cc/reference/en/language/functions/time/millis/
           // that's about 50 days or so...
-          unsigned long max_milli = (unsigned long) (pow(2, 32) - 1);
+          unsigned long max_milli = (unsigned long)(pow(2, 32) - 1);
 
           // Here prev_milli should be a time before roll over
           time_diff = (max_milli - prev_milli) + curr_milli;
-          if(time_diff >= 4000)
-            {
-              sm.forward = !sm.forward; // toggle the current bool value
-              prev_milli = curr_milli;
-            }
+          if (time_diff >= 5500)
+          {
+            sm.forward = !sm.forward; // toggle the current bool value
+            prev_milli = curr_milli;
+          }
         }
         else
         {
           // Do nothing
         }
-          
 
         if (sm.forward == true)
         {
