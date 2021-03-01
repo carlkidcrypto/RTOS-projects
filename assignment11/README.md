@@ -17,3 +17,6 @@ Have it:
 - Take a command to do the rainbow effect
 
 - Write Test code (within your Servo motor code) to run a demo of all the features.   Figure out a way of triggering the test code.
+
+## Block Diagram
+![Block Diagram](images/block-diagram.png)
