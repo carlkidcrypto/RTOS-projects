@@ -1132,3 +1132,42 @@ void ThreeRightCirclePlusDirection(float value, float bottomValue, float topValu
   digitalLeds_updatePixels(pStrand);
 }
 
+// Custom Test
+
+void One_At_A_Time_RGBW(strand_t * pStrand, int num_of_pixels, int percent_brightness)
+{
+  // First Calc new brightness levels
+  pixelColor_t newPixel;
+
+  newPixel.r = 255;
+  newPixel.g = 255;
+  newPixel.b = 255;
+  newPixel.w = 255;
+
+  newPixel = brightnessPercentage(newPixel, percent_brightness);
+  // For each pixel set one color at a time and then move on
+  for(int i=0;i<num_of_pixels;i++){
+    setSinglePixel(i,pixelFromRGBW(newPixel.r, 0, 0, 0));
+    digitalLeds_updatePixels(pStrand);
+    vTaskDelay(pdMS_TO_TICKS(500));
+  }
+
+  for(int i=0;i<num_of_pixels;i++){
+    setSinglePixel(i,pixelFromRGBW(0, newPixel.g, 0, 0));
+    digitalLeds_updatePixels(pStrand);
+    vTaskDelay(pdMS_TO_TICKS(500));
+  }
+
+  for(int i=0;i<num_of_pixels;i++){
+    setSinglePixel(i,pixelFromRGBW(0, 0, newPixel.b, 0));
+    digitalLeds_updatePixels(pStrand);
+    vTaskDelay(pdMS_TO_TICKS(500));
+  }
+
+  for(int i=0;i<num_of_pixels;i++){
+    setSinglePixel(i,pixelFromRGBW(0, 0, 0, newPixel.w));
+    digitalLeds_updatePixels(pStrand);
+    vTaskDelay(pdMS_TO_TICKS(500));
+  }
+  
+}
