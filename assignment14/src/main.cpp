@@ -3,7 +3,7 @@
 
 #define PIN 21
 #define NUM_LEDS 4
-#define BRIGHTNESS 10
+#define BRIGHTNESS 5
 
 void setup() {
 
