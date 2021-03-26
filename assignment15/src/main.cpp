@@ -44,24 +44,7 @@ void setup()
   Serial.println(WiFi.localIP());
   /***** End: Setup the wifi stuff *****/
 
-  /***** Begin: Setup the MDNS Responder *****/
-
-  // This allows us to use http://esp32.local instead if http://ipaddress/
-  if (MDNS.begin("esp32"))
-  {
-    Serial.println("MDNS responder started");
-  }
-  /***** End: Setup the MDNS Responder *****/
-
-  server.on("/", handleRoot);
-  server.on("/test.svg", drawGraph);
-  server.on("/inline", []() {
-    server.send(200, "text/plain", "this works as well");
-  });
-  server.onNotFound(handleNotFound);
-  server.begin();
-  Serial.println("HTTP server started");
-
+  
   /***** Begin: Tasks are created here *****/
   BaseType_t xWST_rtval = xTaskCreate(
       WEB_SERVER_TASK, "WST_TASK" // The Driver task.
@@ -85,10 +68,29 @@ void setup()
 
 void WEB_SERVER_TASK(void *pvparameters)
 {
+  /***** Begin: Setup the MDNS Responder *****/
+
+  // This allows us to use http://esp32.local instead if http://ipaddress/
+  if (MDNS.begin("esp32"))
+  {
+    Serial.println("MDNS responder started");
+  }
+  /***** End: Setup the MDNS Responder *****/
+
+  /**** Begin: Setup callback functions for webserver *****/
+  server.on("/", handleRoot);
+  server.on("/test.svg", drawGraph);
+  server.on("/inline", []() {
+    server.send(200, "text/plain", "this works as well");
+  });
+  server.onNotFound(handleNotFound);
+  server.begin();
+  Serial.println("HTTP server started");
+  /**** End: Setup callback functions for webserver *****/
   for (;;)
   {
     server.handleClient();
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(250));
   }
 }
 
