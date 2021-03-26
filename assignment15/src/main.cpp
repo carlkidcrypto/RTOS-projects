@@ -9,13 +9,14 @@ const char *password = "";
 
 WebServer server(80);
 
-const int led = 13;
+const int led = LED_BUILTIN;
 
 void handleRoot();
 void handleNotFound();
 void setup(void);
 void loop(void);
 void drawGraph();
+void WEB_SERVER_TASK(void *pvParameters);
 
 void handleRoot() {
   digitalWrite(led, 1);
@@ -98,10 +99,30 @@ void setup(void) {
   server.onNotFound(handleNotFound);
   server.begin();
   Serial.println("HTTP server started");
+
+
+  /***** Begin: Tasks are created here *****/
+  BaseType_t xWST_rtval = xTaskCreate(
+      WEB_SERVER_TASK, "WST_TASK" // The Driver task.
+      ,
+      4096 // Stack size
+      ,
+      NULL // parameters
+      ,
+      tskIDLE_PRIORITY + 1 // priority
+      ,
+      NULL// Task Handle
+      );
+
+  if (xWST_rtval != pdPASS)
+  {
+    for (;;)
+      Serial.println(F("WST_TASK: Creation Error, not enough heap or stack!"));
+  }
+  /***** End: Tasks are created here *****/
 }
 
 void loop(void) {
-  server.handleClient();
 }
 
 void drawGraph() {
@@ -120,4 +141,12 @@ void drawGraph() {
   out += "</g>\n</svg>\n";
 
   server.send(200, "image/svg+xml", out);
+}
+
+void WEB_SERVER_TASK(void *pvparameters)
+{
+  for(;;)
+  {
+    server.handleClient();
+  }
 }
