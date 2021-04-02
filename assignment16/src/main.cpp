@@ -22,6 +22,8 @@ void setup();
 void loop();
 String iot_server_detect();
 String iot_server_register();
+String iot_server_send_data(double data_temp, double data_humidity);
+String iot_server_shutdown();
 void WEB_SERVER_TASK(void *pvParameters);
 /***** End: Define tasks/functions *****/
 
@@ -141,7 +143,7 @@ void handleRoot()
 
            "<html>\
   <head>\
-    <meta http-equiv='refresh' content='5'/>\
+    <meta http-equiv='refresh' content='10'/>\
     <title>esp32.local</title>\
     <style>\
       body { background-color: #99ff99; font-family: Arial, Helvetica, Sans-Serif; Color: #000000; }\
@@ -215,6 +217,52 @@ String iot_server_register()
   http.begin(request_str);
   http.addHeader("Content-Type", "application/json");
   String message = "{\"key\":\"" + (String)IOT_SERVER_KEY + "\"" + ",\"iotid\":" + IOT_SERVER_ID + "}";
+  int rtval = http.POST(message);
+
+  if (rtval == 201)
+  { //Check for the returning code
+    String payload = http.getString();
+    return payload;
+  }
+
+  else
+  {
+    return "\0";
+  }
+
+  http.end(); //Free the resources
+}
+
+String iot_server_send_data(double data_temp, double data_humidity)
+{
+  HTTPClient http;
+  String request_str = (String)IOT_SERVER_ADDR + "IOTAPI/" + "IOTData";
+  http.begin(request_str);
+  http.addHeader("Content-Type", "application/json");
+  String message = "{\"auth_code\":\"" + (String)auth_code + "\"" + "\"temperature" "}";
+  int rtval = http.POST(message);
+
+  if (rtval == 201)
+  { //Check for the returning code
+    String payload = http.getString();
+    return payload;
+  }
+
+  else
+  {
+    return "\0";
+  }
+
+  http.end(); //Free the resources
+}
+
+String iot_server_shutdown()
+{
+  HTTPClient http;
+  String request_str = (String)IOT_SERVER_ADDR + "IOTAPI/" + "IOTShutdown";
+  http.begin(request_str);
+  http.addHeader("Content-Type", "application/json");
+  String message = "{\"auth_code\":\"" + (String)auth_code + "\"" + "}";
   int rtval = http.POST(message);
 
   if (rtval == 201)
