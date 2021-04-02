@@ -6,6 +6,8 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
+#define DEBUG_FLAG 1
+
 const char *SSID = "";
 const char *PASSWORD = "";
 const char *IOT_SERVER_ADDR = "";
@@ -23,6 +25,7 @@ void loop();
 String iot_server_detect();
 String iot_server_register();
 String iot_server_send_data(double data_temp, double data_humidity);
+String iot_server_query_commands();
 String iot_server_shutdown();
 void WEB_SERVER_TASK(void *pvParameters);
 /***** End: Define tasks/functions *****/
@@ -36,20 +39,26 @@ void setup()
   /***** Begin: Setup the wifi stuff *****/
   WiFi.mode(WIFI_STA);
   WiFi.begin(SSID, PASSWORD);
+#ifdef DEBUG_FLAG
   Serial.println("");
+#endif
 
   // Wait for connection
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
+#ifdef DEBUG_FLAG
     Serial.print(".");
+#endif
   }
 
+#ifdef DEBUG_FLAG
   Serial.println("");
   Serial.print("Connected to ");
   Serial.println(SSID);
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
+#endif
   /***** End: Setup the wifi stuff *****/
 
   /***** Begin: Tasks are created here *****/
@@ -88,13 +97,16 @@ void WEB_SERVER_TASK(void *pvparameters)
   server.on("/", handleRoot);
   server.onNotFound(handleNotFound);
   server.begin();
+#ifdef DEBUG_FLAG
   Serial.println("HTTP server started");
+#endif
   /***** End: Setup callback functions for webserver *****/
 
   /***** Begin: IOT Server Stuff *****/
 
   // 1: Check we can access the IOT SERVER
   String results = iot_server_detect();
+  vTaskDelay(pdMS_TO_TICKS(250));
   if (results != "\0")
   {
     // We good, keep going
@@ -107,6 +119,7 @@ void WEB_SERVER_TASK(void *pvparameters)
 
   // 2: Lets register with the IOT Server
   results = iot_server_register();
+  vTaskDelay(pdMS_TO_TICKS(250));
 
   // Create a DynamicJsonDocument object
   DynamicJsonDocument DJD_Obj(1024);
@@ -122,6 +135,33 @@ void WEB_SERVER_TASK(void *pvparameters)
     // Not good, restart the ESP
     ESP.restart();
   }
+
+  // 3: Now we send test data to IOT Server
+  results = iot_server_send_data(100.0, 100.0);
+  vTaskDelay(pdMS_TO_TICKS(250));
+  if (results != "\0")
+  {
+    // We good
+  }
+  else
+  {
+    // Not good, restart the ESP
+    ESP.restart();
+  }
+
+  // 4: Now we check if we can receive commands from IOT Server
+  results = iot_server_query_commands();
+  vTaskDelay(pdMS_TO_TICKS(250));
+  if (results != "\0")
+  {
+    // We good
+  }
+  else
+  {
+    // Not good, restart the ESP
+    ESP.restart();
+  }
+
   /***** End: IOT Server Stuff *****/
 
   for (;;)
@@ -196,6 +236,13 @@ String iot_server_detect()
   String message = "{\"key\":\"" + (String)IOT_SERVER_KEY + "\"" + "}";
   int rtval = http.POST(message);
 
+#ifdef DEBUG_FLAG
+  Serial.print("iot_server_detect(): sent request to - ");
+  Serial.print(request_str);
+  Serial.print(" - with POST message - ");
+  Serial.println(message);
+#endif
+
   if (rtval == 201) // success and resource created
   {                 //Check for the returning code
     String payload = http.getString();
@@ -219,6 +266,13 @@ String iot_server_register()
   String message = "{\"key\":\"" + (String)IOT_SERVER_KEY + "\"" + ",\"iotid\":" + IOT_SERVER_ID + "}";
   int rtval = http.POST(message);
 
+#ifdef DEBUG_FLAG
+  Serial.print("iot_server_register(): sent request to - ");
+  Serial.print(request_str);
+  Serial.print(" - with POST message - ");
+  Serial.println(message);
+#endif
+
   if (rtval == 201)
   { //Check for the returning code
     String payload = http.getString();
@@ -239,8 +293,45 @@ String iot_server_send_data(double data_temp, double data_humidity)
   String request_str = (String)IOT_SERVER_ADDR + "IOTAPI/" + "IOTData";
   http.begin(request_str);
   http.addHeader("Content-Type", "application/json");
-  String message = "{\"auth_code\":\"" + (String)auth_code + "\"" + "\"temperature" "}";
+  String message = "{\"auth_code\":\"" + (String)auth_code + "\"" + ", \"temperature\":" + data_temp + ", \"humidity\":" + data_humidity + "}";
   int rtval = http.POST(message);
+
+#ifdef DEBUG_FLAG
+  Serial.print("iot_server_send_data(): sent request to - ");
+  Serial.print(request_str);
+  Serial.print(" - with POST message - ");
+  Serial.println(message);
+#endif
+
+  if (rtval == 201)
+  { //Check for the returning code
+    String payload = http.getString();
+    return payload;
+  }
+
+  else
+  {
+    return "\0";
+  }
+
+  http.end(); //Free the resources
+}
+
+String iot_server_query_commands()
+{
+  HTTPClient http;
+  String request_str = (String)IOT_SERVER_ADDR + "IOTAPI/" + "QueryServerForCommands";
+  http.begin(request_str);
+  http.addHeader("Content-Type", "application/json");
+  String message = "{\"auth_code\":\"" + (String)auth_code + "\"" + ", \"iotid\":" + IOT_SERVER_ID + "}";
+  int rtval = http.POST(message);
+
+#ifdef DEBUG_FLAG
+  Serial.print("iot_server_query_commands(): sent request to - ");
+  Serial.print(request_str);
+  Serial.print(" - with POST message - ");
+  Serial.println(message);
+#endif
 
   if (rtval == 201)
   { //Check for the returning code
@@ -264,6 +355,13 @@ String iot_server_shutdown()
   http.addHeader("Content-Type", "application/json");
   String message = "{\"auth_code\":\"" + (String)auth_code + "\"" + "}";
   int rtval = http.POST(message);
+
+#ifdef DEBUG_FLAG
+  Serial.print("iot_server_shutdown(): sent request to - ");
+  Serial.print(request_str);
+  Serial.print(" - with POST message - ");
+  Serial.println(message);
+#endif
 
   if (rtval == 201)
   { //Check for the returning code
