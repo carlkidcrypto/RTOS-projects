@@ -4,12 +4,14 @@
 #include <WebServer.h>
 #include <ESPmDNS.h>
 #include <HTTPClient.h>
+#include <ArduinoJson.h>
 
 const char *SSID = "";
 const char *PASSWORD = "";
-const String IOT_SERVER_ADDR = "";
-const String IOT_SERVER_KEY = "";
-const String IOT_SERVER_ID = "";
+const char *IOT_SERVER_ADDR = "";
+const char *IOT_SERVER_KEY = "";
+const char *IOT_SERVER_ID = "";
+const char *auth_code = "";
 WebServer server(80);
 const int led = LED_BUILTIN;
 
@@ -18,7 +20,6 @@ void handleRoot();
 void handleNotFound();
 void setup();
 void loop();
-void drawGraph();
 String iot_server_detect();
 String iot_server_register();
 void WEB_SERVER_TASK(void *pvParameters);
@@ -53,7 +54,7 @@ void setup()
   BaseType_t xWST_rtval = xTaskCreate(
       WEB_SERVER_TASK, "WST_TASK" // The Driver task.
       ,
-      4096 // Stack size
+      5120 // Stack size
       ,
       NULL // parameters
       ,
@@ -83,10 +84,6 @@ void WEB_SERVER_TASK(void *pvparameters)
 
   /***** Begin: Setup callback functions for webserver *****/
   server.on("/", handleRoot);
-  server.on("/test.svg", drawGraph);
-  server.on("/inline", []() {
-    server.send(200, "text/plain", "this works as well");
-  });
   server.onNotFound(handleNotFound);
   server.begin();
   Serial.println("HTTP server started");
@@ -96,7 +93,7 @@ void WEB_SERVER_TASK(void *pvparameters)
 
   // 1: Check we can access the IOT SERVER
   String results = iot_server_detect();
-  if(results != "\0")
+  if (results != "\0")
   {
     // We good, keep going
   }
@@ -108,10 +105,15 @@ void WEB_SERVER_TASK(void *pvparameters)
 
   // 2: Lets register with the IOT Server
   results = iot_server_register();
-  if(results != "\0")
+
+  // Create a DynamicJsonDocument object
+  DynamicJsonDocument DJD_Obj(1024);
+
+  if (results != "\0")
   {
-    // We good
-    Serial.println(results);
+    // We good, let's grab and store that auth code
+    deserializeJson(DJD_Obj, results);
+    auth_code = DJD_Obj["auth_code"];
   }
   else
   {
@@ -130,29 +132,34 @@ void WEB_SERVER_TASK(void *pvparameters)
 void handleRoot()
 {
   digitalWrite(led, 1);
-  char temp[400];
+  char temp[525];
   int sec = millis() / 1000;
   int min = sec / 60;
   int hr = min / 60;
 
-  snprintf(temp, 400,
+  snprintf(temp, 525,
 
            "<html>\
   <head>\
     <meta http-equiv='refresh' content='5'/>\
-    <title>ESP32 Demo</title>\
+    <title>esp32.local</title>\
     <style>\
-      body { background-color: #cccccc; font-family: Arial, Helvetica, Sans-Serif; Color: #000088; }\
+      body { background-color: #99ff99; font-family: Arial, Helvetica, Sans-Serif; Color: #000000; }\
     </style>\
   </head>\
   <body>\
     <h1>Hello from ESP32!</h1>\
     <p>Uptime: %02d:%02d:%02d</p>\
-    <img src=\"/test.svg\" />\
+    <p>-----Server Info----- <br>\
+    <b>IOT_SERVER_ADDR:</b> %s\
+    <b>IOT_SERVER_KEY:</b> %s\
+    <b>IOT_SERVER_ID:</b> %s\
+    <b>IOT_SERVER_AUTH_CODE:</b> %s\
+    </p>\
   </body>\
 </html>",
 
-           hr, min % 60, sec % 60);
+           hr, min % 60, sec % 60, IOT_SERVER_ADDR, IOT_SERVER_KEY, IOT_SERVER_KEY, auth_code);
   server.send(200, "text/html", temp);
   digitalWrite(led, 0);
 }
@@ -178,38 +185,18 @@ void handleNotFound()
   digitalWrite(led, 0);
 }
 
-void drawGraph()
-{
-  String out = "";
-  char temp[100];
-  out += "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" width=\"400\" height=\"150\">\n";
-  out += "<rect width=\"400\" height=\"150\" fill=\"rgb(250, 230, 210)\" stroke-width=\"1\" stroke=\"rgb(0, 0, 0)\" />\n";
-  out += "<g stroke=\"black\">\n";
-  int y = rand() % 130;
-  for (int x = 10; x < 390; x += 10)
-  {
-    int y2 = rand() % 130;
-    sprintf(temp, "<line x1=\"%d\" y1=\"%d\" x2=\"%d\" y2=\"%d\" stroke-width=\"1\" />\n", x, 140 - y, x + 10, 140 - y2);
-    out += temp;
-    y = y2;
-  }
-  out += "</g>\n</svg>\n";
-
-  server.send(200, "image/svg+xml", out);
-}
-
 String iot_server_detect()
 {
   HTTPClient http;
-  String request_str = IOT_SERVER_ADDR + "IOTAPI/" + "DetectServer";
+  String request_str = (String)IOT_SERVER_ADDR + "IOTAPI/" + "DetectServer";
   http.begin(request_str);
   http.addHeader("Content-Type", "application/json");
-  String message = "{\"key\":\"" + IOT_SERVER_KEY + "\"" + "}";
+  String message = "{\"key\":\"" + (String)IOT_SERVER_KEY + "\"" + "}";
   int rtval = http.POST(message);
 
   if (rtval == 201) // success and resource created
-  { //Check for the returning code
-    String payload = http.getString(); 
+  {                 //Check for the returning code
+    String payload = http.getString();
     return payload;
   }
 
@@ -224,10 +211,10 @@ String iot_server_detect()
 String iot_server_register()
 {
   HTTPClient http;
-  String request_str = IOT_SERVER_ADDR + "IOTAPI/" + "RegisterWithServer";
+  String request_str = (String)IOT_SERVER_ADDR + "IOTAPI/" + "RegisterWithServer";
   http.begin(request_str);
   http.addHeader("Content-Type", "application/json");
-  String message = "{\"key\":\"" + IOT_SERVER_KEY + "\"" + ",\"iotid\":" + IOT_SERVER_ID + "}";
+  String message = "{\"key\":\"" + (String)IOT_SERVER_KEY + "\"" + ",\"iotid\":" + IOT_SERVER_ID + "}";
   int rtval = http.POST(message);
 
   if (rtval == 201)
