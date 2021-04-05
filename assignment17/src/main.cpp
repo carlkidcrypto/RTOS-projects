@@ -1,34 +1,4 @@
-#include <Arduino.h>
-#include <WiFi.h>
-#include <WiFiClient.h>
-#include <WebServer.h>
-#include <ESPmDNS.h>
-#include <HTTPClient.h>
-#include <ArduinoJson.h>
-
-#define DEBUG_FLAG 1
-
-const char *SSID = "";
-const char *PASSWORD = "";
-const char *IOT_SERVER_ADDR = "";
-const char *IOT_SERVER_KEY = "";
-const char *IOT_SERVER_ID = "";
-const char *auth_code = "";
-WebServer server(80);
-const int led = LED_BUILTIN;
-
-/***** Begin: Define tasks/functions *****/
-void handleRoot();
-void handleNotFound();
-void setup();
-void loop();
-String iot_server_detect();
-String iot_server_register();
-String iot_server_send_data(double data_temp, double data_humidity);
-String iot_server_query_commands();
-String iot_server_shutdown();
-void WEB_SERVER_TASK(void *pvParameters);
-/***** End: Define tasks/functions *****/
+#include <main.h>
 
 void setup()
 {
@@ -61,15 +31,53 @@ void setup()
 #endif
   /***** End: Setup the wifi stuff *****/
 
+  /***** Begin: Setup the Semaphores/Queues *****/
+  LCD_SEMAPHORE = xSemaphoreCreateBinary();
+  if (LCD_SEMAPHORE == NULL)
+  {
+    for (;;)
+      Serial.println(F("LCD_SEMAPHORE: Creation Error, not enough heap mem!"));
+  }
+
+  HT_SEMAPHORE = xSemaphoreCreateBinary();
+  if (HT_SEMAPHORE == NULL)
+  {
+    for (;;)
+      Serial.println(F("HT_SEMAPHORE: Creation Error, not enough heap mem!"));
+  }
+
+  HT_QUEUE = xQueueCreate(1, sizeof(struct humi_temp));
+  if (HT_QUEUE == NULL)
+  {
+    for (;;)
+      Serial.println(F("HT_QUEUE: Creation Error, not enough heap mem!"));
+  }
+
+  SM_QUEUE = xQueueCreate(1, sizeof(struct stepper_motor));
+  if (SM_QUEUE == NULL)
+  {
+    for (;;)
+      Serial.println(F("SM_QUEUE: Creation Error, not enough heap mem!"));
+  }
+
+  NP_QUEUE = xQueueCreate(1, sizeof(struct NeoPixel));
+  if (NP_QUEUE == NULL)
+  {
+    for (;;)
+      Serial.println(F("NP_QUEUE: Creation Error, not enough heap mem!"));
+  }
+  /***** End: Setup the Semaphores/Queues *****/
+
+
   /***** Begin: Tasks are created here *****/
   BaseType_t xWST_rtval = xTaskCreate(
-      WEB_SERVER_TASK, "WST_TASK" // The Driver task.
+      WEB_SERVER_TASK, "WST_TASK" // The Web Server Task
       ,
-      5120 // Stack size
+      4096 // Stack size
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY + 1 // priority
+      tskIDLE_PRIORITY + 3 // priority
       ,
       NULL // Task Handle
   );
@@ -79,6 +87,61 @@ void setup()
     for (;;)
       Serial.println(F("WST_TASK: Creation Error, not enough heap or stack!"));
   }
+
+  vTaskDelay(pdMS_TO_TICKS(1000));
+
+  BaseType_t xIOTT_rtval = xTaskCreate(
+      IOT_TASK, "IOT_TASK" // The IOT Task
+      ,
+      4096 // Stack size
+      ,
+      NULL // parameters
+      ,
+      tskIDLE_PRIORITY + 2 // priority
+      ,
+      NULL // Task Handle
+  );
+
+  if (xIOTT_rtval != pdPASS)
+  {
+    for (;;)
+      Serial.println(F("xIOT_TASK: Creation Error, not enough heap or stack!"));
+  }
+
+  vTaskDelay(pdMS_TO_TICKS(2000));
+
+  BaseType_t xNPT_RTVAL = xTaskCreate(
+      NEO_PIXEL_TASK, "NEO_PIXEL_TASK_TASK", // NeoPixel Task
+      1024                 // Stack size
+      ,
+      NULL // parameters
+      ,
+      tskIDLE_PRIORITY + 1 // priority
+      ,
+      NULL);
+
+  if (xNPT_RTVAL != pdPASS)
+  {
+    for (;;)
+      Serial.println(F("NP_TASK: Creation Error, not enough heap or stack!"));
+  }
+
+  BaseType_t xHTT_RTVAL = xTaskCreate(
+      HUMI_TEMP_TASK, "HT_TASK", // Humidity Temperature Task
+      1024 // Stack size
+      ,
+      NULL // parameters
+      ,
+      tskIDLE_PRIORITY + 1 // priority
+      ,
+      NULL);
+
+  if (xHTT_RTVAL != pdPASS)
+  {
+    for (;;)
+      Serial.println(F("HUMI_TEMP_TASK: Creation Error, not enough heap or stack!"));
+  }
+
   /***** End: Tasks are created here *****/
 }
 
@@ -102,6 +165,15 @@ void WEB_SERVER_TASK(void *pvparameters)
 #endif
   /***** End: Setup callback functions for webserver *****/
 
+  for (;;)
+  {
+    server.handleClient();
+    vTaskDelay(pdMS_TO_TICKS(250));
+  }
+}
+
+void IOT_TASK(void *pvParameters)
+{
   /***** Begin: IOT Server Stuff *****/
 
   // 1: Check we can access the IOT SERVER
@@ -164,11 +236,157 @@ void WEB_SERVER_TASK(void *pvparameters)
 
   /***** End: IOT Server Stuff *****/
 
-  for (;;)
+  for(;;)
   {
-    server.handleClient();
     vTaskDelay(pdMS_TO_TICKS(250));
   }
+}
+
+void NEO_PIXEL_TASK(void *pvParameters)
+{
+  Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, NEO_PIXEL_PIN, NEO_GRBW + NEO_KHZ800);
+  NeoPixel neopixel;
+  // Set NeoPixels Color & brightness
+  neopixel.one.rgbw.red = 0;
+  neopixel.one.rgbw.blue = 0;
+  neopixel.one.rgbw.green = 0;
+  neopixel.one.rgbw.white = 0;
+
+  neopixel.two.rgbw.red = 0;
+  neopixel.two.rgbw.blue = 0;
+  neopixel.two.rgbw.green = 0;
+  neopixel.two.rgbw.white = 0;
+
+  neopixel.three.rgbw.red = 0;
+  neopixel.three.rgbw.blue = 0;
+  neopixel.three.rgbw.green = 0;
+  neopixel.three.rgbw.white = 0;
+
+  neopixel.four.rgbw.red = 0;
+  neopixel.four.rgbw.blue = 0;
+  neopixel.four.rgbw.green = 0;
+  neopixel.four.rgbw.white = 0;
+
+  neopixel.rainbow_mode = false;
+  // Initialize all pixels to 'on'
+  strip.setBrightness(20); // This func set brightness for all pixels
+  strip.begin();
+  strip.show();
+
+  for (;;)
+  {
+    strip.show();
+
+    // Check the NP_QUEUE
+    if (NP_QUEUE != NULL)
+    {
+      if (xQueueReceive(NP_QUEUE, &neopixel, (TickType_t)0) == pdTRUE)
+      {
+        // we got something yay!
+      }
+    } // End check f or NP_QUEUE null
+
+    // Do the NeoPixel Magic
+    if (neopixel.rainbow_mode == true)
+    {
+      // Do the ranbow effect thing instead, set brightness for all pixels
+      strip.setBrightness(20);
+      for (uint16_t i = 0; i < strip.numPixels(); i++)
+      {
+        strip.setPixelColor(i, strip.Color(20, 0, 0, 0));
+        strip.show();
+        vTaskDelay(pdMS_TO_TICKS(25));
+      }
+
+      for (uint16_t i = 0; i < strip.numPixels(); i++)
+      {
+        strip.setPixelColor(i, strip.Color(0, 20, 0, 0));
+        strip.show();
+        vTaskDelay(pdMS_TO_TICKS(25));
+      }
+
+      for (uint16_t i = 0; i < strip.numPixels(); i++)
+      {
+        strip.setPixelColor(i, strip.Color(0, 0, 20, 0));
+        strip.show();
+        vTaskDelay(pdMS_TO_TICKS(25));
+      }
+
+      for (uint16_t i = 0; i < strip.numPixels(); i++)
+      {
+        strip.setPixelColor(i, strip.Color(0, 0, 0, 20));
+        strip.show();
+        vTaskDelay(pdMS_TO_TICKS(25));
+      }
+    }
+    else // The rainbow var is not set
+    {
+      // Set each individual pixel
+      strip.setPixelColor(0, strip.Color(neopixel.one.rgbw.red, neopixel.one.rgbw.green, neopixel.one.rgbw.blue, neopixel.one.rgbw.white));
+      strip.show();
+      strip.setPixelColor(1, strip.Color(neopixel.two.rgbw.red, neopixel.two.rgbw.green, neopixel.two.rgbw.blue, neopixel.two.rgbw.white));
+      strip.show();
+      strip.setPixelColor(2, strip.Color(neopixel.three.rgbw.red, neopixel.three.rgbw.green, neopixel.three.rgbw.blue, neopixel.three.rgbw.white));
+      strip.show();
+      strip.setPixelColor(3, strip.Color(neopixel.four.rgbw.red, neopixel.four.rgbw.green, neopixel.four.rgbw.blue, neopixel.four.rgbw.white));
+      strip.show();
+      vTaskDelay(pdMS_TO_TICKS(25));
+    }
+
+    // Yield for other tasks, we need to run as often as we can
+    vTaskDelay(pdMS_TO_TICKS(1));
+  } // End of for loop
+}
+
+void HUMI_TEMP_TASK(void *pvParameters)
+{
+  humi_temp HT_READINGS;
+
+  // Create an object our sensor
+  ClosedCube_HDC1080 hdc1080;
+
+  // Start up the sensor at i2c address
+  hdc1080.begin(0x40);
+  // Set sensor resolution, humidity, temp
+  hdc1080.setResolution(HDC1080_RESOLUTION_14BIT, HDC1080_RESOLUTION_14BIT);
+
+  for (;;)
+  {
+    // get the humi/temp values
+    HT_READINGS.temperature = hdc1080.readTemperature();
+    HT_READINGS.humidity = hdc1080.readHumidity();
+
+    // Do we have the semaphore
+    if (xSemaphoreTake(HT_SEMAPHORE, 0) == pdTRUE)
+    {
+      // Send read value to HT_QUEUE
+      if (HT_QUEUE != NULL)
+      {
+        if (xQueueSendToBack(HT_QUEUE, &HT_READINGS, (TickType_t)0) == pdTRUE)
+        {
+#if DEBUG_FLAG
+          Serial.print(F("HT_TASK: Success sent value to HT_QUEUE! - "));
+          Serial.print(HT_READINGS.humidity);
+          Serial.print(" - ");
+          Serial.println(HT_READINGS.temperature);
+#endif
+        }
+
+        else
+        {
+#if DEBUG_FLAG
+          Serial.print(F("HT_TASK: Failure sending value to HT_QUEUE! HT_QUEUE FULL! - "));
+          Serial.print(HT_READINGS.humidity);
+          Serial.print(" - ");
+          Serial.println(HT_READINGS.temperature);
+#endif
+        }
+      }
+    }
+
+    // We delay for other taks
+    vTaskDelay(pdMS_TO_TICKS(100));
+  } // End of for loop
 }
 
 void handleRoot()
