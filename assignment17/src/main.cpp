@@ -2,14 +2,11 @@
 
 void setup()
 {
-  pinMode(led, OUTPUT);
-  digitalWrite(led, 0);
   Serial.begin(115200);
-
   /***** Begin: Setup the wifi stuff *****/
   WiFi.mode(WIFI_STA);
   WiFi.begin(SSID, PASSWORD);
-#ifdef DEBUG_FLAG
+#if DEBUG_FLAG
   Serial.println("");
 #endif
 
@@ -17,12 +14,12 @@ void setup()
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
-#ifdef DEBUG_FLAG
+#if DEBUG_FLAG
     Serial.print(".");
 #endif
   }
 
-#ifdef DEBUG_FLAG
+#if DEBUG_FLAG
   Serial.println("");
   Serial.print("Connected to ");
   Serial.println(SSID);
@@ -68,10 +65,9 @@ void setup()
   }
   /***** End: Setup the Semaphores/Queues *****/
 
-
   /***** Begin: Tasks are created here *****/
   BaseType_t xWST_rtval = xTaskCreate(
-      WEB_SERVER_TASK, "WST_TASK" // The Web Server Task
+      WEB_SERVER_TASK, "WEB_SERVER_TASK" // The Web Server Task
       ,
       4096 // Stack size
       ,
@@ -85,10 +81,11 @@ void setup()
   if (xWST_rtval != pdPASS)
   {
     for (;;)
-      Serial.println(F("WST_TASK: Creation Error, not enough heap or stack!"));
+      Serial.println(F("WEB_SERVER_TASK: Creation Error, not enough heap or stack!"));
   }
 
-  vTaskDelay(pdMS_TO_TICKS(1000));
+  // Wait 2.5 seconds for wifi web server task to be setup
+  vTaskDelay(pdMS_TO_TICKS(2500));
 
   BaseType_t xIOTT_rtval = xTaskCreate(
       IOT_TASK, "IOT_TASK" // The IOT Task
@@ -105,14 +102,15 @@ void setup()
   if (xIOTT_rtval != pdPASS)
   {
     for (;;)
-      Serial.println(F("xIOT_TASK: Creation Error, not enough heap or stack!"));
+      Serial.println(F("IOT_TASK: Creation Error, not enough heap or stack!"));
   }
 
-  vTaskDelay(pdMS_TO_TICKS(2000));
+  // Wait 2.5 seconds for IOT task to be setup
+  vTaskDelay(pdMS_TO_TICKS(2500));
 
   BaseType_t xNPT_RTVAL = xTaskCreate(
       NEO_PIXEL_TASK, "NEO_PIXEL_TASK_TASK", // NeoPixel Task
-      1024                 // Stack size
+      1024                                   // Stack size
       ,
       NULL // parameters
       ,
@@ -128,7 +126,7 @@ void setup()
 
   BaseType_t xHTT_RTVAL = xTaskCreate(
       HUMI_TEMP_TASK, "HT_TASK", // Humidity Temperature Task
-      1024 // Stack size
+      1024                       // Stack size
       ,
       NULL // parameters
       ,
@@ -160,24 +158,70 @@ void WEB_SERVER_TASK(void *pvparameters)
   server.on("/", handleRoot);
   server.onNotFound(handleNotFound);
   server.begin();
-#ifdef DEBUG_FLAG
+#if DEBUG_FLAG
   Serial.println("HTTP server started");
 #endif
   /***** End: Setup callback functions for webserver *****/
 
   for (;;)
   {
+
     server.handleClient();
+
+    NeoPixel neopixel;
+    // Set NeoPixels Color & brightness
+    neopixel.one.rgbw.red = 0;
+    neopixel.one.rgbw.blue = 0;
+    neopixel.one.rgbw.green = 0;
+    neopixel.one.rgbw.white = 0;
+
+    neopixel.two.rgbw.red = 0;
+    neopixel.two.rgbw.blue = 0;
+    neopixel.two.rgbw.green = 0;
+    neopixel.two.rgbw.white = 0;
+
+    neopixel.three.rgbw.red = 0;
+    neopixel.three.rgbw.blue = 0;
+    neopixel.three.rgbw.green = 0;
+    neopixel.three.rgbw.white = 0;
+
+    neopixel.four.rgbw.red = 25;
+    neopixel.four.rgbw.blue = 0;
+    neopixel.four.rgbw.green = 0;
+    neopixel.four.rgbw.white = 0;
+
+    neopixel.rainbow_mode = false;
+
+    // Send to NPQ
+    if (xQueueSendToBack(NP_QUEUE, &neopixel, (TickType_t)0) == pdTRUE)
+    {
+#if DEBUG_FLAG
+      Serial.println(F("WEB_SERVER_TASK: Success sending to NPQ!"));
+#endif
+    }
     vTaskDelay(pdMS_TO_TICKS(250));
   }
 }
 
 void IOT_TASK(void *pvParameters)
 {
+  /***** Begin: Setup local vars for task *****/
+  double check_interval_secs = 60 * 5; // default 5 minutes
+  double send_interval_secs = 60 * 5;  // default 5 minutes
+  humi_temp ht;
+  unsigned long prev_time_val1 = millis();
+  unsigned long curr_time_val1 = 0;
+  unsigned long prev_time_val2 = millis();
+  unsigned long curr_time_val2 = 0;
+  unsigned long time_diff = 0;
+  String results = "";
+  DynamicJsonDocument DJD_Obj(1024);
+  /***** End: Setup local vars for task *****/
+
   /***** Begin: IOT Server Stuff *****/
 
   // 1: Check we can access the IOT SERVER
-  String results = iot_server_detect();
+  results = iot_server_detect();
   vTaskDelay(pdMS_TO_TICKS(250));
   if (results != "\0")
   {
@@ -192,9 +236,6 @@ void IOT_TASK(void *pvParameters)
   // 2: Lets register with the IOT Server
   results = iot_server_register();
   vTaskDelay(pdMS_TO_TICKS(250));
-
-  // Create a DynamicJsonDocument object
-  DynamicJsonDocument DJD_Obj(1024);
 
   if (results != "\0")
   {
@@ -227,6 +268,41 @@ void IOT_TASK(void *pvParameters)
   if (results != "\0")
   {
     // We good
+    deserializeJson(DJD_Obj, results);
+    // Check the results
+    JsonArray Commands = DJD_Obj["commands"];
+    for (JsonObject item : Commands)
+    {
+      const char *command = item["command"];
+#if DEBUG_FLAG
+      Serial.print("IOT_TASK: JSON Response decoded - ");
+      Serial.println(command);
+#endif
+
+      if (strcmp(command, "RotQCCW") == 0)
+      {
+      }
+      else if (strcmp(command, "Flash") == 0)
+      {
+        // Don't do anything
+      }
+      else if (strcmp(command, "SendNow") == 0)
+      {
+      }
+      else if (strcmp(command, "RotQCW") == 0)
+      {
+      }
+      else if (strcmp(command, "SetCheckFreq") == 0)
+      {
+      }
+      else if (strcmp(command, "SetSendFreq") == 0)
+      {
+      }
+      else
+      {
+        // not a valid command. Nothing changes continue
+      }
+    }
   }
   else
   {
@@ -236,8 +312,96 @@ void IOT_TASK(void *pvParameters)
 
   /***** End: IOT Server Stuff *****/
 
-  for(;;)
+  for (;;)
   {
+    // Read and check timer. If our send interval is over send semaphore to HT_SEMAPHORE
+    curr_time_val1 = millis();
+    time_diff = curr_time_val1 - prev_time_val1;
+    if ((time_diff / 1000) >= send_interval_secs)
+    {
+      prev_time_val1 = curr_time_val1;
+      // Sent the semaphore
+      xSemaphoreGive(HT_SEMAPHORE);
+    }
+    else
+    {
+      // If we get here a semaphore must been given. Or send interval is not over yet.
+      if (xQueueReceive(HT_QUEUE, &ht, (TickType_t)0) == pdTRUE)
+      {
+        // We received something, so we send it.
+        results = iot_server_send_data(ht.temperature, ht.humidity);
+        if (results != "\0")
+        {
+          // We good
+        }
+        else
+        {
+          // Not good, data not sent. Yield and try again.
+          taskYIELD();
+        }
+      }
+    }
+
+    curr_time_val2 = millis();
+    time_diff = curr_time_val2 - prev_time_val2;
+    if ((time_diff / 1000) >= check_interval_secs)
+    {
+      prev_time_val2 = curr_time_val2;
+      // If we get here then we need to check for iot server commands
+      results = iot_server_query_commands();
+      if (results != "\0")
+      {
+        // We good
+        deserializeJson(DJD_Obj, results);
+        // Check the results
+        JsonArray Commands = DJD_Obj["commands"];
+        for (JsonObject item : Commands)
+        {
+          const char *command = item["command"];
+#if DEBUG_FLAG
+          Serial.print("IOT_TASK: JSON Response decoded - ");
+          Serial.println(command);
+#endif
+        }
+      }
+      else
+      {
+        // Not good, data not sent. Yield and try again.
+        taskYIELD();
+      }
+    }
+
+    NeoPixel neopixel;
+    // Set NeoPixels Color & brightness
+    neopixel.one.rgbw.red = 0;
+    neopixel.one.rgbw.blue = 0;
+    neopixel.one.rgbw.green = 0;
+    neopixel.one.rgbw.white = 0;
+
+    neopixel.two.rgbw.red = 0;
+    neopixel.two.rgbw.blue = 0;
+    neopixel.two.rgbw.green = 0;
+    neopixel.two.rgbw.white = 0;
+
+    neopixel.three.rgbw.red = 25;
+    neopixel.three.rgbw.blue = 0;
+    neopixel.three.rgbw.green = 0;
+    neopixel.three.rgbw.white = 0;
+
+    neopixel.four.rgbw.red = 0;
+    neopixel.four.rgbw.blue = 0;
+    neopixel.four.rgbw.green = 0;
+    neopixel.four.rgbw.white = 0;
+
+    neopixel.rainbow_mode = false;
+
+    // Send to NPQ
+    if (xQueueSendToBack(NP_QUEUE, &neopixel, (TickType_t)0) == pdTRUE)
+    {
+#if DEBUG_FLAG
+      Serial.println(F("IOT_TASK: Success sending to NPQ!"));
+#endif
+    }
     vTaskDelay(pdMS_TO_TICKS(250));
   }
 }
@@ -284,7 +448,7 @@ void NEO_PIXEL_TASK(void *pvParameters)
       {
         // we got something yay!
       }
-    } // End check f or NP_QUEUE null
+    } // End check for NP_QUEUE null
 
     // Do the NeoPixel Magic
     if (neopixel.rainbow_mode == true)
@@ -330,11 +494,10 @@ void NEO_PIXEL_TASK(void *pvParameters)
       strip.show();
       strip.setPixelColor(3, strip.Color(neopixel.four.rgbw.red, neopixel.four.rgbw.green, neopixel.four.rgbw.blue, neopixel.four.rgbw.white));
       strip.show();
-      vTaskDelay(pdMS_TO_TICKS(25));
     }
 
     // Yield for other tasks, we need to run as often as we can
-    vTaskDelay(pdMS_TO_TICKS(1));
+    vTaskDelay(pdMS_TO_TICKS(250));
   } // End of for loop
 }
 
@@ -391,7 +554,38 @@ void HUMI_TEMP_TASK(void *pvParameters)
 
 void handleRoot()
 {
-  digitalWrite(led, 1);
+  NeoPixel neopixel;
+  // Set NeoPixels Color & brightness
+  neopixel.one.rgbw.red = 0;
+  neopixel.one.rgbw.blue = 0;
+  neopixel.one.rgbw.green = 0;
+  neopixel.one.rgbw.white = 0;
+
+  neopixel.two.rgbw.red = 0;
+  neopixel.two.rgbw.blue = 0;
+  neopixel.two.rgbw.green = 0;
+  neopixel.two.rgbw.white = 0;
+
+  neopixel.three.rgbw.red = 0;
+  neopixel.three.rgbw.blue = 0;
+  neopixel.three.rgbw.green = 0;
+  neopixel.three.rgbw.white = 0;
+
+  neopixel.four.rgbw.red = 0;
+  neopixel.four.rgbw.blue = 25;
+  neopixel.four.rgbw.green = 0;
+  neopixel.four.rgbw.white = 0;
+
+  neopixel.rainbow_mode = false;
+
+  // Send to NPQ
+  if (xQueueSendToBack(NP_QUEUE, &neopixel, (TickType_t)0) == pdTRUE)
+  {
+#if DEBUG_FLAG
+    Serial.println(F("handleRoot func: Success sending to NPQ!"));
+#endif
+  }
+
   char temp[525];
   int sec = millis() / 1000;
   int min = sec / 60;
@@ -421,12 +615,42 @@ void handleRoot()
 
            hr, min % 60, sec % 60, IOT_SERVER_ADDR, IOT_SERVER_KEY, IOT_SERVER_KEY, auth_code);
   server.send(200, "text/html", temp);
-  digitalWrite(led, 0);
 }
 
 void handleNotFound()
 {
-  digitalWrite(led, 1);
+  NeoPixel neopixel;
+  // Set NeoPixels Color & brightness
+  neopixel.one.rgbw.red = 0;
+  neopixel.one.rgbw.blue = 0;
+  neopixel.one.rgbw.green = 0;
+  neopixel.one.rgbw.white = 0;
+
+  neopixel.two.rgbw.red = 0;
+  neopixel.two.rgbw.blue = 0;
+  neopixel.two.rgbw.green = 0;
+  neopixel.two.rgbw.white = 0;
+
+  neopixel.three.rgbw.red = 0;
+  neopixel.three.rgbw.blue = 0;
+  neopixel.three.rgbw.green = 0;
+  neopixel.three.rgbw.white = 0;
+
+  neopixel.four.rgbw.red = 0;
+  neopixel.four.rgbw.blue = 0;
+  neopixel.four.rgbw.green = 25;
+  neopixel.four.rgbw.white = 0;
+
+  neopixel.rainbow_mode = false;
+
+  // Send to NPQ
+  if (xQueueSendToBack(NP_QUEUE, &neopixel, (TickType_t)0) == pdTRUE)
+  {
+#if DEBUG_FLAG
+    Serial.println(F("handleNotFound func: Success sending to NPQ!"));
+#endif
+  }
+
   String message = "File Not Found\n\n";
   message += "URI: ";
   message += server.uri();
@@ -442,7 +666,6 @@ void handleNotFound()
   }
 
   server.send(404, "text/plain", message);
-  digitalWrite(led, 0);
 }
 
 String iot_server_detect()
@@ -454,7 +677,7 @@ String iot_server_detect()
   String message = "{\"key\":\"" + (String)IOT_SERVER_KEY + "\"" + "}";
   int rtval = http.POST(message);
 
-#ifdef DEBUG_FLAG
+#if DEBUG_FLAG
   Serial.print("iot_server_detect(): sent request to - ");
   Serial.print(request_str);
   Serial.print(" - with POST message - ");
@@ -484,7 +707,7 @@ String iot_server_register()
   String message = "{\"key\":\"" + (String)IOT_SERVER_KEY + "\"" + ",\"iotid\":" + IOT_SERVER_ID + "}";
   int rtval = http.POST(message);
 
-#ifdef DEBUG_FLAG
+#if DEBUG_FLAG
   Serial.print("iot_server_register(): sent request to - ");
   Serial.print(request_str);
   Serial.print(" - with POST message - ");
@@ -514,7 +737,7 @@ String iot_server_send_data(double data_temp, double data_humidity)
   String message = "{\"auth_code\":\"" + (String)auth_code + "\"" + ", \"temperature\":" + data_temp + ", \"humidity\":" + data_humidity + "}";
   int rtval = http.POST(message);
 
-#ifdef DEBUG_FLAG
+#if DEBUG_FLAG
   Serial.print("iot_server_send_data(): sent request to - ");
   Serial.print(request_str);
   Serial.print(" - with POST message - ");
@@ -544,7 +767,7 @@ String iot_server_query_commands()
   String message = "{\"auth_code\":\"" + (String)auth_code + "\"" + ", \"iotid\":" + IOT_SERVER_ID + "}";
   int rtval = http.POST(message);
 
-#ifdef DEBUG_FLAG
+#if DEBUG_FLAG
   Serial.print("iot_server_query_commands(): sent request to - ");
   Serial.print(request_str);
   Serial.print(" - with POST message - ");
@@ -574,7 +797,7 @@ String iot_server_shutdown()
   String message = "{\"auth_code\":\"" + (String)auth_code + "\"" + "}";
   int rtval = http.POST(message);
 
-#ifdef DEBUG_FLAG
+#if DEBUG_FLAG
   Serial.print("iot_server_shutdown(): sent request to - ");
   Serial.print(request_str);
   Serial.print(" - with POST message - ");

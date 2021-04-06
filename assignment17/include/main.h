@@ -8,6 +8,7 @@
 #include <AccelStepper.h>
 #include <ClosedCube_HDC1080.h>
 #include <Adafruit_NeoPixel.h>
+
 #define DEBUG_FLAG 1
 #define NEO_PIXEL_PIN 21
 #define NUM_LEDS 4
@@ -19,7 +20,6 @@ const char *IOT_SERVER_KEY = "";
 const char *IOT_SERVER_ID = "";
 const char *auth_code = "";
 WebServer server(80);
-const int led = LED_BUILTIN;
 
 /***** Begin: Define tasks/functions *****/
 void handleRoot();
@@ -40,42 +40,42 @@ void HUMI_TEMP_TASK(void *pvParameters);
 /***** Begin: Define Semaphores/Queues *****/
 
 // Create the semaphores for the LCD, and humi/temp
-SemaphoreHandle_t  LCD_SEMAPHORE, HT_SEMAPHORE;
+SemaphoreHandle_t LCD_SEMAPHORE, HT_SEMAPHORE;
 
 // Create the LCD, stepper motor, and humi/yemp queues
 QueueHandle_t LCD_QUEUE, HT_QUEUE, SM_QUEUE, NP_QUEUE;
 /***** end: efine Semaphores/Queues *****/
 
 // Define the stepper motor struct
-  struct stepper_motor
-  {
+struct stepper_motor
+{
     bool forward;
     byte RPM;
-  };
+};
 
-  // Define the humi/temp struct
-  struct humi_temp
-  {
+// Define the humi/temp struct
+struct humi_temp
+{
     double humidity;
     double temperature;
-  };
+};
 
-  // Define the NeoPixel struct
-  struct NeoPixel
-  {
+// Define the NeoPixel struct
+struct NeoPixel
+{
     struct PIXEL
     {
-      struct RGBW
-      {
-        // Note: the value set for each color is also the brightness level. 255 max, 0 off
-        byte red;
-        byte green;
-        byte blue;
-        byte white;
-      };
-      RGBW rgbw;
+        struct RGBW
+        {
+            // Note: the value set for each color is also the brightness level. 255 max, 0 off
+            byte red;
+            byte green;
+            byte blue;
+            byte white;
+        };
+        RGBW rgbw;
     };
     PIXEL one, two, three, four;
 
     bool rainbow_mode;
-  };
+};

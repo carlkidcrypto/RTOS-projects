@@ -7,3 +7,9 @@
 - Have LCD display something interesting about what your program is doing. Use the colors!
 - Add your Stepper Motor into your program
 - Control your motor through your webserver
+
+## IOT Server Command
+
+```bash
+{"commands": [{"command": "RotQCW"},{"command": "RotQCW"},{"command": "RotQCW"},{"command": "RotQCW"},{"command": "RotQCCW"},{"command": "RotQCCW"},{"command": "RotQCCW"},{"command": "RotQCCW"},{"command": "RotQCCW"},{"command": "RotQCCW"},{"command": "Flash"},{"command": "Flash"},{"command": "Flash"},{"command": "SendNow"},{"command": "SendNow"},{"command": "SendNow"},{"command": "SetCheckFreq", "seconds": 100},{"command": "SetCheckFreq", "seconds": 100}]}
+```
