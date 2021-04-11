@@ -9,9 +9,13 @@
 #include <ClosedCube_HDC1080.h>
 #include <Adafruit_NeoPixel.h>
 
-#define DEBUG_FLAG 1
+#define DEBUG_FLAG 0
 #define NEO_PIXEL_PIN 21
 #define NUM_LEDS 4
+#define IN1 33
+#define IN2 4
+#define IN3 32
+#define IN4 14
 
 const char *SSID = "";
 const char *PASSWORD = "";
@@ -35,6 +39,7 @@ void WEB_SERVER_TASK(void *pvParameters);
 void IOT_TASK(void *pvParameters);
 void NEO_PIXEL_TASK(void *pvParameters);
 void HUMI_TEMP_TASK(void *pvParameters);
+void STEPPER_MOTOR_TASK(void *pvParameters);
 /***** End: Define tasks/functions *****/
 
 /***** Begin: Define Semaphores/Queues *****/

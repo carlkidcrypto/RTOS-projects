@@ -140,6 +140,22 @@ void setup()
       Serial.println(F("HUMI_TEMP_TASK: Creation Error, not enough heap or stack!"));
   }
 
+  BaseType_t xSMT_RTVAL = xTaskCreate(
+      STEPPER_MOTOR_TASK, "STEPPER_MOTOR_TASK", // STEPPER MOTOR TASK
+      1024                                      // Stack size
+      ,
+      NULL // parameters
+      ,
+      tskIDLE_PRIORITY + 3 // priority
+      ,
+      NULL);
+
+  if (xSMT_RTVAL != pdPASS)
+  {
+    for (;;)
+      Serial.println(F("STEPPER_MOTOR_TASK: Creation Error, not enough heap or stack!"));
+  }
+
   /***** End: Tasks are created here *****/
 }
 
@@ -550,6 +566,77 @@ void HUMI_TEMP_TASK(void *pvParameters)
     // We delay for other taks
     vTaskDelay(pdMS_TO_TICKS(100));
   } // End of for loop
+}
+
+void STEPPER_MOTOR_TASK(void *pvParameters)
+{
+  // make pins input
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+  // init sm to default values
+  stepper_motor sm;
+  sm.forward = true;
+  // Note: Steps per second = RPM * 2048 / 60
+  sm.RPM = 4;
+
+  // Create a stepper motor object
+  // Set the motor to full step mode, 2048 total steps. (that what the 4 means) (8 means half step mode)
+  AccelStepper my_motor(4, IN1, IN3, IN2, IN4);
+  // Set max steps per second, roughly 4 RPM = 5 *2048 / 60 = 136.533333
+  my_motor.setMaxSpeed(136);
+  // Set current position to 0
+  my_motor.setCurrentPosition(0);
+
+  for (;;)
+  {
+    // run the motor. These needs to run whenever possible. At best once every ~1ms
+    my_motor.run();
+
+    // Check the SM_QUEUE
+    if (SM_QUEUE != NULL)
+    {
+      if (xQueueReceive(SM_QUEUE, &sm, (TickType_t)0) == pdTRUE)
+      {
+#if DEBUG_FLAG
+        Serial.print(F("SM_TASK: Success read from SM_QUEUE - "));
+        Serial.print(sm.forward);
+        Serial.print(F(" "));
+        Serial.println(sm.RPM);
+#endif
+        if (sm.forward == true)
+        {
+          // Set the motor speed in steps per second
+          my_motor.setSpeed((sm.RPM * 2048) / 60);
+          my_motor.moveTo(2048);
+        }
+        else
+        {
+          my_motor.setSpeed(-(sm.RPM * 2048) / 60);
+          my_motor.moveTo(-2048);
+        }
+      } // End of receving from SM_QUEUE
+      else
+      {
+        if (sm.forward == true)
+        {
+          // Set the motor speed in steps per second
+          my_motor.setSpeed((sm.RPM * 2048) / 60);
+          my_motor.moveTo(2048);
+        }
+        else
+        {
+          my_motor.setSpeed(-(sm.RPM * 2048) / 60);
+          my_motor.moveTo(-2048);
+        }
+      } // Tried receiving from SM_QUEUE, but failed
+    }   //End of check SM_QUEUE for null
+
+    // Don't delay yield instead. This needs to run as often as possible
+    vTaskDelay(pdMS_TO_TICKS(5));
+  }
 }
 
 void handleRoot()
