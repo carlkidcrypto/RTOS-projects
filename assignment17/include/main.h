@@ -44,11 +44,11 @@ void STEPPER_MOTOR_TASK(void *pvParameters);
 
 /***** Begin: Define Semaphores/Queues *****/
 
-// Create the semaphores for the LCD, and humi/temp
-SemaphoreHandle_t LCD_SEMAPHORE, HT_SEMAPHORE;
+// Create the semaphores for humi/temp
+SemaphoreHandle_t HT_SEMAPHORE;
 
-// Create the LCD, stepper motor, and humi/yemp queues
-QueueHandle_t LCD_QUEUE, HT_QUEUE, SM_QUEUE, NP_QUEUE;
+// Create the stepper motor, and humi/temp queues
+QueueHandle_t HT_QUEUE, SM_QUEUE, NP_QUEUE;
 /***** end: efine Semaphores/Queues *****/
 
 // Define the stepper motor struct

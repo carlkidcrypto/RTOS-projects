@@ -29,13 +29,6 @@ void setup()
   /***** End: Setup the wifi stuff *****/
 
   /***** Begin: Setup the Semaphores/Queues *****/
-  LCD_SEMAPHORE = xSemaphoreCreateBinary();
-  if (LCD_SEMAPHORE == NULL)
-  {
-    for (;;)
-      Serial.println(F("LCD_SEMAPHORE: Creation Error, not enough heap mem!"));
-  }
-
   HT_SEMAPHORE = xSemaphoreCreateBinary();
   if (HT_SEMAPHORE == NULL)
   {
@@ -163,7 +156,7 @@ void WEB_SERVER_TASK(void *pvparameters)
 {
   /***** Begin: Setup the MDNS Responder *****/
 
-  // This allows us to use http://esp32.local instead if http://ipaddress/
+  // This allows us to use http://esp32.local instead of http://ipaddress/
   if (MDNS.begin("esp32"))
   {
     Serial.println("MDNS responder started");
@@ -179,10 +172,48 @@ void WEB_SERVER_TASK(void *pvparameters)
 #endif
   /***** End: Setup callback functions for webserver *****/
 
+  stepper_motor SM;
+  SM.forward = true;
+  SM.RPM = 0;
+
   for (;;)
   {
 
     server.handleClient();
+    // Check for GET Args.
+    if(server.arg("dir") != "\0")
+    {
+      // We have got something. Let's adjust Stepper Motor direction.
+      String argval = server.arg("dir");
+      #if DEBUG_FLAG
+      Serial.println(argval);
+      #endif
+
+      if(argval == "true")
+      {
+        SM.forward = true;
+      }
+      else if (argval == "false")
+      {
+        SM.forward = false;
+      }
+      else
+      {
+        // Not a valid option
+      }
+    }
+
+    if(server.arg("rpm") != "\0")
+    {
+      // We have got something. Let's adjust Stepper Motor RPM.
+      String argval = server.arg("rpm");
+      #if DEBUG_FLAG
+      Serial.println(argval);
+      #endif
+      SM.RPM = argval.toInt();
+    }
+
+
 
     NeoPixel neopixel;
     // Set NeoPixels Color & brightness
@@ -213,6 +244,14 @@ void WEB_SERVER_TASK(void *pvparameters)
     {
 #if DEBUG_FLAG
       Serial.println(F("WEB_SERVER_TASK: Success sending to NPQ!"));
+#endif
+    }
+
+    // Send to SMQ
+    if (xQueueSendToBack(SM_QUEUE, &SM, (TickType_t)0) == pdTRUE)
+    {
+#if DEBUG_FLAG
+      Serial.println(F("WEB_SERVER_TASK: Success sending to SMQ!"));
 #endif
     }
     vTaskDelay(pdMS_TO_TICKS(250));
@@ -580,7 +619,7 @@ void STEPPER_MOTOR_TASK(void *pvParameters)
   stepper_motor sm;
   sm.forward = true;
   // Note: Steps per second = RPM * 2048 / 60
-  sm.RPM = 4;
+  sm.RPM = 0;
 
   // Create a stepper motor object
   // Set the motor to full step mode, 2048 total steps. (that what the 4 means) (8 means half step mode)
@@ -673,12 +712,12 @@ void handleRoot()
 #endif
   }
 
-  char temp[525];
+  char temp[1250];
   int sec = millis() / 1000;
   int min = sec / 60;
   int hr = min / 60;
 
-  snprintf(temp, 525,
+  snprintf(temp, 1250,
 
            "<html>\
   <head>\
@@ -695,8 +734,13 @@ void handleRoot()
     <b>IOT_SERVER_ADDR:</b> %s\
     <b>IOT_SERVER_KEY:</b> %s\
     <b>IOT_SERVER_ID:</b> %s\
-    <b>IOT_SERVER_AUTH_CODE:</b> %s\
-    </p>\
+    <b>IOT_SERVER_AUTH_CODE:</b> %s </p>\
+    <p><a href='/?dir=true'><button style='margin:10px;' id='0' class='button'>SM CW</button></a></p>\
+    <p><a href='/?dir=false'><button style='margin:10px;' id='1' class='button'>SM CCW</button></a></p>\
+    <p><a href='/?rpm=1'><button style='margin:10px;' id='2' class='button'>SM 1 RPM</button></a></p>\
+    <p><a href='/?rpm=2'><button style='margin:10px;' id='3' class='button'>SM 2 RPM</button></a></p>\
+    <p><a href='/?rpm=3'><button style='margin:10px;' id='4' class='button'>SM 3 RPM</button></a></p>\
+    <p><a href='/?rpm=4'><button style='margin:10px;' id='5' class='button'>SM 4 RPM</button></a></p>\
   </body>\
 </html>",
 
