@@ -50,7 +50,7 @@ void setup()
       Serial.println(F("SM_QUEUE: Creation Error, not enough heap mem!"));
   }
 
-  NP_QUEUE = xQueueCreate(1, sizeof(struct NeoPixel));
+  NP_QUEUE = xQueueCreate(25, sizeof(struct NeoPixel));
   if (NP_QUEUE == NULL)
   {
     for (;;)
@@ -139,7 +139,7 @@ void setup()
       ,
       NULL // parameters
       ,
-      tskIDLE_PRIORITY + 3 // priority
+      tskIDLE_PRIORITY + 1 // priority
       ,
       NULL);
 
@@ -181,15 +181,15 @@ void WEB_SERVER_TASK(void *pvparameters)
 
     server.handleClient();
     // Check for GET Args.
-    if(server.arg("dir") != "\0")
+    if (server.arg("dir") != "\0")
     {
       // We have got something. Let's adjust Stepper Motor direction.
       String argval = server.arg("dir");
-      #if DEBUG_FLAG
+#if DEBUG_FLAG
       Serial.println(argval);
-      #endif
+#endif
 
-      if(argval == "true")
+      if (argval == "true")
       {
         SM.forward = true;
       }
@@ -203,17 +203,32 @@ void WEB_SERVER_TASK(void *pvparameters)
       }
     }
 
-    if(server.arg("rpm") != "\0")
+    if (server.arg("rpm") != "\0")
     {
       // We have got something. Let's adjust Stepper Motor RPM.
       String argval = server.arg("rpm");
-      #if DEBUG_FLAG
+#if DEBUG_FLAG
       Serial.println(argval);
-      #endif
+#endif
       SM.RPM = argval.toInt();
     }
 
-
+    if (server.arg("stop") != "\0")
+    {
+      // We have got something. Let's adjust Stepper Motor RPM.
+      String argval = server.arg("stop");
+#if DEBUG_FLAG
+      Serial.println(argval);
+#endif
+      if (argval == "true")
+      {
+        SM.RPM = 0;
+      }
+      else
+      {
+        // Not a valid option
+      }
+    }
 
     NeoPixel neopixel;
     // Set NeoPixels Color & brightness
@@ -232,8 +247,8 @@ void WEB_SERVER_TASK(void *pvparameters)
     neopixel.three.rgbw.green = 0;
     neopixel.three.rgbw.white = 0;
 
-    neopixel.four.rgbw.red = 25;
-    neopixel.four.rgbw.blue = 0;
+    neopixel.four.rgbw.red = 0;
+    neopixel.four.rgbw.blue = 25;
     neopixel.four.rgbw.green = 0;
     neopixel.four.rgbw.white = 0;
 
@@ -254,7 +269,9 @@ void WEB_SERVER_TASK(void *pvparameters)
       Serial.println(F("WEB_SERVER_TASK: Success sending to SMQ!"));
 #endif
     }
-    vTaskDelay(pdMS_TO_TICKS(250));
+
+    // Delay for other tasks
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
 
@@ -457,7 +474,9 @@ void IOT_TASK(void *pvParameters)
       Serial.println(F("IOT_TASK: Success sending to NPQ!"));
 #endif
     }
-    vTaskDelay(pdMS_TO_TICKS(250));
+
+    // Delay for other tasks
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
 
@@ -494,6 +513,9 @@ void NEO_PIXEL_TASK(void *pvParameters)
 
   for (;;)
   {
+    // Raise yourself first
+    vTaskPrioritySet(NULL, tskIDLE_PRIORITY + 4);
+
     strip.show();
 
     // Check the NP_QUEUE
@@ -551,8 +573,11 @@ void NEO_PIXEL_TASK(void *pvParameters)
       strip.show();
     }
 
-    // Yield for other tasks, we need to run as often as we can
-    vTaskDelay(pdMS_TO_TICKS(250));
+    // de-raise yourself
+    vTaskPrioritySet(NULL, tskIDLE_PRIORITY + 1);
+
+    // Delay for other tasks
+    vTaskDelay(pdMS_TO_TICKS(25));
   } // End of for loop
 }
 
@@ -570,6 +595,9 @@ void HUMI_TEMP_TASK(void *pvParameters)
 
   for (;;)
   {
+    // Raise yourself first
+    vTaskPrioritySet(NULL, tskIDLE_PRIORITY + 4);
+
     // get the humi/temp values
     HT_READINGS.temperature = hdc1080.readTemperature();
     HT_READINGS.humidity = hdc1080.readHumidity();
@@ -602,8 +630,43 @@ void HUMI_TEMP_TASK(void *pvParameters)
       }
     }
 
-    // We delay for other taks
-    vTaskDelay(pdMS_TO_TICKS(100));
+    NeoPixel neopixel;
+    // Set NeoPixels Color & brightness
+    neopixel.one.rgbw.red = 0;
+    neopixel.one.rgbw.blue = 0;
+    neopixel.one.rgbw.green = 0;
+    neopixel.one.rgbw.white = 25;
+
+    neopixel.two.rgbw.red = 0;
+    neopixel.two.rgbw.blue = 0;
+    neopixel.two.rgbw.green = 0;
+    neopixel.two.rgbw.white = 0;
+
+    neopixel.three.rgbw.red = 0;
+    neopixel.three.rgbw.blue = 0;
+    neopixel.three.rgbw.green = 0;
+    neopixel.three.rgbw.white = 0;
+
+    neopixel.four.rgbw.red = 0;
+    neopixel.four.rgbw.blue = 0;
+    neopixel.four.rgbw.green = 0;
+    neopixel.four.rgbw.white = 0;
+
+    neopixel.rainbow_mode = false;
+
+    // Send to NPQ
+    if (xQueueSendToBack(NP_QUEUE, &neopixel, (TickType_t)0) == pdTRUE)
+    {
+#if DEBUG_FLAG
+      Serial.println(F("HUMI_TEMP_TASK: Success sending to NPQ!"));
+#endif
+    }
+    
+    // de-raise yourself
+    vTaskPrioritySet(NULL, tskIDLE_PRIORITY + 1);
+
+    // Delay for other tasks
+    vTaskDelay(pdMS_TO_TICKS(25));
   } // End of for loop
 }
 
@@ -673,8 +736,40 @@ void STEPPER_MOTOR_TASK(void *pvParameters)
       } // Tried receiving from SM_QUEUE, but failed
     }   //End of check SM_QUEUE for null
 
-    // Don't delay yield instead. This needs to run as often as possible
-    vTaskDelay(pdMS_TO_TICKS(5));
+    NeoPixel neopixel;
+    // Set NeoPixels Color & brightness
+    neopixel.one.rgbw.red = 0;
+    neopixel.one.rgbw.blue = 0;
+    neopixel.one.rgbw.green = 0;
+    neopixel.one.rgbw.white = 0;
+
+    neopixel.two.rgbw.red = 0;
+    neopixel.two.rgbw.blue = 0;
+    neopixel.two.rgbw.green = 25;
+    neopixel.two.rgbw.white = 0;
+
+    neopixel.three.rgbw.red = 0;
+    neopixel.three.rgbw.blue = 0;
+    neopixel.three.rgbw.green = 0;
+    neopixel.three.rgbw.white = 0;
+
+    neopixel.four.rgbw.red = 0;
+    neopixel.four.rgbw.blue = 0;
+    neopixel.four.rgbw.green = 0;
+    neopixel.four.rgbw.white = 0;
+
+    neopixel.rainbow_mode = false;
+
+    // Send to NPQ
+    if (xQueueSendToBack(NP_QUEUE, &neopixel, (TickType_t)0) == pdTRUE)
+    {
+#if DEBUG_FLAG
+      Serial.println(F("STEPPER_MOTOR_TASK: Success sending to NPQ!"));
+#endif
+    }
+
+    // Delay for other tasks
+    vTaskDelay(pdMS_TO_TICKS(1));
   }
 }
 
@@ -697,8 +792,8 @@ void handleRoot()
   neopixel.three.rgbw.green = 0;
   neopixel.three.rgbw.white = 0;
 
-  neopixel.four.rgbw.red = 0;
-  neopixel.four.rgbw.blue = 25;
+  neopixel.four.rgbw.red = 25;
+  neopixel.four.rgbw.blue = 0;
   neopixel.four.rgbw.green = 0;
   neopixel.four.rgbw.white = 0;
 
@@ -741,6 +836,7 @@ void handleRoot()
     <p><a href='/?rpm=2'><button style='margin:10px;' id='3' class='button'>SM 2 RPM</button></a></p>\
     <p><a href='/?rpm=3'><button style='margin:10px;' id='4' class='button'>SM 3 RPM</button></a></p>\
     <p><a href='/?rpm=4'><button style='margin:10px;' id='5' class='button'>SM 4 RPM</button></a></p>\
+    <p><a href='/?stop=true'><button style='margin:10px;' id='5' class='button'>STOP SM</button></a></p>\
   </body>\
 </html>",
 
