@@ -103,7 +103,7 @@ void setup()
 
   BaseType_t xNPT_RTVAL = xTaskCreate(
       NEO_PIXEL_TASK, "NEO_PIXEL_TASK_TASK", // NeoPixel Task
-      1024                                   // Stack size
+      2048                                   // Stack size
       ,
       NULL // parameters
       ,
@@ -119,7 +119,7 @@ void setup()
 
   BaseType_t xHTT_RTVAL = xTaskCreate(
       HUMI_TEMP_TASK, "HT_TASK", // Humidity Temperature Task
-      1024                       // Stack size
+      2048                       // Stack size
       ,
       NULL // parameters
       ,
@@ -154,15 +154,6 @@ void setup()
 
 void WEB_SERVER_TASK(void *pvparameters)
 {
-  /***** Begin: Setup the MDNS Responder *****/
-
-  // This allows us to use http://esp32.local instead of http://ipaddress/
-  if (MDNS.begin("esp32"))
-  {
-    Serial.println("MDNS responder started");
-  }
-  /***** End: Setup the MDNS Responder *****/
-
   /***** Begin: Setup callback functions for webserver *****/
   server.on("/", handleRoot);
   server.onNotFound(handleNotFound);
@@ -271,15 +262,15 @@ void WEB_SERVER_TASK(void *pvparameters)
     }
 
     // Delay for other tasks
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(125));
   }
 }
 
 void IOT_TASK(void *pvParameters)
 {
   /***** Begin: Setup local vars for task *****/
-  double check_interval_secs = 60 * 5; // default 5 minutes
-  double send_interval_secs = 60 * 5;  // default 5 minutes
+  double check_interval_secs = 60 * 1; // default 5 minutes
+  double send_interval_secs = 60 * 1;  // default 5 minutes
   humi_temp ht;
   unsigned long prev_time_val1 = millis();
   unsigned long curr_time_val1 = 0;
@@ -288,6 +279,10 @@ void IOT_TASK(void *pvParameters)
   unsigned long time_diff = 0;
   String results = "";
   DynamicJsonDocument DJD_Obj(1024);
+  stepper_motor SM;
+  SM.forward = true;
+  SM.RPM = 0;
+  xSemaphoreTake(HT_SEMAPHORE, 0);
   /***** End: Setup local vars for task *****/
 
   /***** Begin: IOT Server Stuff *****/
@@ -434,11 +429,63 @@ void IOT_TASK(void *pvParameters)
           Serial.print("IOT_TASK: JSON Response decoded - ");
           Serial.println(command);
 #endif
+
+          if (strcmp(command, "RotQCCW") == 0)
+          {
+            SM.forward = false;
+            SM.RPM = 4;
+            // Send to SMQ
+            if (xQueueSendToBack(SM_QUEUE, &SM, (TickType_t)0) == pdTRUE)
+            {
+#if DEBUG_FLAG
+              Serial.println(F("IOT_TASK: Success sending to SMQ!"));
+#endif
+            }
+          }
+          else if (strcmp(command, "Flash") == 0)
+          {
+            // Don't do anything
+          }
+          else if (strcmp(command, "SendNow") == 0)
+          {
+          }
+          else if (strcmp(command, "RotQCW") == 0)
+          {
+            SM.forward = true;
+            SM.RPM = 4;
+            // Send to SMQ
+            if (xQueueSendToBack(SM_QUEUE, &SM, (TickType_t)0) == pdTRUE)
+            {
+#if DEBUG_FLAG
+              Serial.println(F("IOT_TASK: Success sending to SMQ!"));
+#endif
+            }
+          }
+          else if (strcmp(command, "SetCheckFreq") == 0)
+          {
+            // If it comes from the server it's in seconds
+            check_interval_secs = double (item["seconds"]);
+
+            Serial.print("IOT_TASK - Setting check interval too....: ");
+            Serial.println(check_interval_secs);
+          }
+          else if (strcmp(command, "SetSendFreq") == 0)
+          {
+            // If it comes from the server it's in seconds
+            send_interval_secs = double (item["seconds"]);
+            Serial.print("IOT_TASK - Setting send interval too....: ");
+            Serial.println(send_interval_secs);
+          }
+          else
+          {
+            // not a valid command. Nothing changes continue
+          }
         }
       }
       else
       {
         // Not good, data not sent. Yield and try again.
+        Serial.println("IOT_TASK: Error something went wrong. Yielding, line 490!");
         taskYIELD();
       }
     }
@@ -476,7 +523,7 @@ void IOT_TASK(void *pvParameters)
     }
 
     // Delay for other tasks
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(250));
   }
 }
 
@@ -513,9 +560,6 @@ void NEO_PIXEL_TASK(void *pvParameters)
 
   for (;;)
   {
-    // Raise yourself first
-    vTaskPrioritySet(NULL, tskIDLE_PRIORITY + 4);
-
     strip.show();
 
     // Check the NP_QUEUE
@@ -573,11 +617,8 @@ void NEO_PIXEL_TASK(void *pvParameters)
       strip.show();
     }
 
-    // de-raise yourself
-    vTaskPrioritySet(NULL, tskIDLE_PRIORITY + 1);
-
     // Delay for other tasks
-    vTaskDelay(pdMS_TO_TICKS(25));
+    vTaskDelay(pdMS_TO_TICKS(1));
   } // End of for loop
 }
 
@@ -592,12 +633,10 @@ void HUMI_TEMP_TASK(void *pvParameters)
   hdc1080.begin(0x40);
   // Set sensor resolution, humidity, temp
   hdc1080.setResolution(HDC1080_RESOLUTION_14BIT, HDC1080_RESOLUTION_14BIT);
+  xSemaphoreTake(HT_SEMAPHORE, 0);
 
   for (;;)
   {
-    // Raise yourself first
-    vTaskPrioritySet(NULL, tskIDLE_PRIORITY + 4);
-
     // get the humi/temp values
     HT_READINGS.temperature = hdc1080.readTemperature();
     HT_READINGS.humidity = hdc1080.readHumidity();
@@ -661,12 +700,9 @@ void HUMI_TEMP_TASK(void *pvParameters)
       Serial.println(F("HUMI_TEMP_TASK: Success sending to NPQ!"));
 #endif
     }
-    
-    // de-raise yourself
-    vTaskPrioritySet(NULL, tskIDLE_PRIORITY + 1);
 
     // Delay for other tasks
-    vTaskDelay(pdMS_TO_TICKS(25));
+    vTaskDelay(pdMS_TO_TICKS(500));
   } // End of for loop
 }
 
