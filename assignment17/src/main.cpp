@@ -262,21 +262,22 @@ void WEB_SERVER_TASK(void *pvparameters)
     }
 
     // Delay for other tasks
-    vTaskDelay(pdMS_TO_TICKS(125));
+    vTaskDelay(pdMS_TO_TICKS(250));
   }
 }
 
 void IOT_TASK(void *pvParameters)
 {
   /***** Begin: Setup local vars for task *****/
-  double check_interval_secs = 60 * 1; // default 5 minutes
-  double send_interval_secs = 60 * 1;  // default 5 minutes
+  double check_interval_secs = 60 * 5; // default 5 minutes
+  double send_interval_secs = 60 * 5;  // default 5 minutes
   humi_temp ht;
   unsigned long prev_time_val1 = millis();
   unsigned long curr_time_val1 = 0;
   unsigned long prev_time_val2 = millis();
   unsigned long curr_time_val2 = 0;
-  unsigned long time_diff = 0;
+  unsigned long time_diff1 = 0;
+  unsigned long time_diff2 = 0;
   String results = "";
   DynamicJsonDocument DJD_Obj(1024);
   stepper_motor SM;
@@ -377,14 +378,16 @@ void IOT_TASK(void *pvParameters)
     ESP.restart();
   }
 
+  DJD_Obj.clear(); // Lastly clear the  dynamic json object.
+  results = "";    // clear results string.
   /***** End: IOT Server Stuff *****/
 
   for (;;)
   {
     // Read and check timer. If our send interval is over send semaphore to HT_SEMAPHORE
     curr_time_val1 = millis();
-    time_diff = curr_time_val1 - prev_time_val1;
-    if ((time_diff / 1000) >= send_interval_secs)
+    time_diff1 = curr_time_val1 - prev_time_val1;
+    if ((time_diff1 / 1000) >= send_interval_secs)
     {
       prev_time_val1 = curr_time_val1;
       // Sent the semaphore
@@ -403,15 +406,21 @@ void IOT_TASK(void *pvParameters)
         }
         else
         {
-          // Not good, data not sent. Yield and try again.
+// Not good, data not sent. Yield and try again.
+#if DEBUG_FLAG
+          Serial.println("IOT_TASK: Error something went wrong. Yielding, line 407!");
+#endif
           taskYIELD();
         }
+        // clear the results and stuff
+        DJD_Obj.clear();
+        results = "";
       }
     }
 
     curr_time_val2 = millis();
-    time_diff = curr_time_val2 - prev_time_val2;
-    if ((time_diff / 1000) >= check_interval_secs)
+    time_diff2 = curr_time_val2 - prev_time_val2;
+    if ((time_diff2 / 1000) >= check_interval_secs)
     {
       prev_time_val2 = curr_time_val2;
       // If we get here then we need to check for iot server commands
@@ -419,73 +428,95 @@ void IOT_TASK(void *pvParameters)
       if (results != "\0")
       {
         // We good
-        deserializeJson(DJD_Obj, results);
-        // Check the results
-        JsonArray Commands = DJD_Obj["commands"];
-        for (JsonObject item : Commands)
+        DeserializationError err = deserializeJson(DJD_Obj, results);
+        if (err)
         {
-          const char *command = item["command"];
+          #if DEBUG_FLAG
+          Serial.print("IOT_TASK: DeserializationError - ");
+          Serial.println(err.c_str());
+          #endif
+        }
+        else
+        {
+          JsonArray Commands = DJD_Obj["commands"];
+          for (auto item : Commands)
+          {
+            const char *command = item["command"];
+            double value = item["seconds"];
+
 #if DEBUG_FLAG
-          Serial.print("IOT_TASK: JSON Response decoded - ");
-          Serial.println(command);
+            Serial.print("IOT_TASK: JSON Response decoded - ");
+            Serial.print(command);
+            Serial.println(value);
 #endif
 
-          if (strcmp(command, "RotQCCW") == 0)
-          {
-            SM.forward = false;
-            SM.RPM = 4;
-            // Send to SMQ
-            if (xQueueSendToBack(SM_QUEUE, &SM, (TickType_t)0) == pdTRUE)
+            if (strcmp(command, "RotQCCW") == 0)
             {
+              SM.forward = false;
+              SM.RPM = 4;
+              // Send to SMQ
+              if (xQueueSendToBack(SM_QUEUE, &SM, (TickType_t)0) == pdTRUE)
+              {
 #if DEBUG_FLAG
-              Serial.println(F("IOT_TASK: Success sending to SMQ!"));
+                Serial.println(F("IOT_TASK: Success sending to SMQ!"));
 #endif
+              }
             }
-          }
-          else if (strcmp(command, "Flash") == 0)
-          {
-            // Don't do anything
-          }
-          else if (strcmp(command, "SendNow") == 0)
-          {
-          }
-          else if (strcmp(command, "RotQCW") == 0)
-          {
-            SM.forward = true;
-            SM.RPM = 4;
-            // Send to SMQ
-            if (xQueueSendToBack(SM_QUEUE, &SM, (TickType_t)0) == pdTRUE)
+            else if (strcmp(command, "Flash") == 0)
             {
-#if DEBUG_FLAG
-              Serial.println(F("IOT_TASK: Success sending to SMQ!"));
-#endif
+              // Don't do anything
             }
-          }
-          else if (strcmp(command, "SetCheckFreq") == 0)
-          {
-            // If it comes from the server it's in seconds
-            check_interval_secs = double (item["seconds"]);
+            else if (strcmp(command, "SendNow") == 0)
+            {
+            }
+            else if (strcmp(command, "RotQCW") == 0)
+            {
+              SM.forward = true;
+              SM.RPM = 4;
+              // Send to SMQ
+              if (xQueueSendToBack(SM_QUEUE, &SM, (TickType_t)0) == pdTRUE)
+              {
+#if DEBUG_FLAG
+                Serial.println(F("IOT_TASK: Success sending to SMQ!"));
+#endif
+              }
+            }
+            else if (strcmp(command, "SetCheckFreq") == 0)
+            {
+              // If it comes from the server it's in seconds
+              check_interval_secs = value;
 
-            Serial.print("IOT_TASK - Setting check interval too....: ");
-            Serial.println(check_interval_secs);
-          }
-          else if (strcmp(command, "SetSendFreq") == 0)
-          {
-            // If it comes from the server it's in seconds
-            send_interval_secs = double (item["seconds"]);
-            Serial.print("IOT_TASK - Setting send interval too....: ");
-            Serial.println(send_interval_secs);
-          }
-          else
-          {
-            // not a valid command. Nothing changes continue
+              #if DEBUG_FLAG
+              Serial.print("IOT_TASK - Setting check interval too....: ");
+              Serial.println(check_interval_secs);
+              #endif
+            }
+            else if (strcmp(command, "SetSendFreq") == 0)
+            {
+              // If it comes from the server it's in seconds
+              send_interval_secs = value;
+              #if DEBUG_FLAG
+              Serial.print("IOT_TASK - Setting send interval too....: ");
+              Serial.println(send_interval_secs);
+              #endif
+            }
+            else
+            {
+              // not a valid command. Nothing changes continue
+            }
           }
         }
+
+        // clear the results stuff.
+        DJD_Obj.clear();
+        results = "";
       }
       else
       {
-        // Not good, data not sent. Yield and try again.
+// Not good, data not sent. Yield and try again.
+#if DEBUG_FLAG
         Serial.println("IOT_TASK: Error something went wrong. Yielding, line 490!");
+#endif
         taskYIELD();
       }
     }
@@ -522,7 +553,7 @@ void IOT_TASK(void *pvParameters)
 #endif
     }
 
-    // Delay for other tasks
+    // Delay for other tasks.
     vTaskDelay(pdMS_TO_TICKS(250));
   }
 }
@@ -553,8 +584,9 @@ void NEO_PIXEL_TASK(void *pvParameters)
   neopixel.four.rgbw.white = 0;
 
   neopixel.rainbow_mode = false;
+
   // Initialize all pixels to 'on'
-  strip.setBrightness(20); // This func set brightness for all pixels
+  strip.setBrightness(50);
   strip.begin();
   strip.show();
 
@@ -674,7 +706,7 @@ void HUMI_TEMP_TASK(void *pvParameters)
     neopixel.one.rgbw.red = 0;
     neopixel.one.rgbw.blue = 0;
     neopixel.one.rgbw.green = 0;
-    neopixel.one.rgbw.white = 25;
+    neopixel.one.rgbw.white = 75;
 
     neopixel.two.rgbw.red = 0;
     neopixel.two.rgbw.blue = 0;
@@ -781,7 +813,7 @@ void STEPPER_MOTOR_TASK(void *pvParameters)
 
     neopixel.two.rgbw.red = 0;
     neopixel.two.rgbw.blue = 0;
-    neopixel.two.rgbw.green = 25;
+    neopixel.two.rgbw.green = 20;
     neopixel.two.rgbw.white = 0;
 
     neopixel.three.rgbw.red = 0;
@@ -828,7 +860,7 @@ void handleRoot()
   neopixel.three.rgbw.green = 0;
   neopixel.three.rgbw.white = 0;
 
-  neopixel.four.rgbw.red = 25;
+  neopixel.four.rgbw.red = 75;
   neopixel.four.rgbw.blue = 0;
   neopixel.four.rgbw.green = 0;
   neopixel.four.rgbw.white = 0;
@@ -901,7 +933,7 @@ void handleNotFound()
 
   neopixel.four.rgbw.red = 0;
   neopixel.four.rgbw.blue = 0;
-  neopixel.four.rgbw.green = 25;
+  neopixel.four.rgbw.green = 75;
   neopixel.four.rgbw.white = 0;
 
   neopixel.rainbow_mode = false;
